@@ -1,0 +1,9 @@
+# Core Dependencies
+pydantic
+ffmpeg-python
+edge-tts
+flask
+soundfile
+
+# Utilities
+numpy

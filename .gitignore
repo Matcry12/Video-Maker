@@ -1,0 +1,40 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local environment files
+.env
+.env.*
+
+# Test and lint caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Editor / OS files
+.DS_Store
+.idea/
+.vscode/
+
+# Local tool state
+.claude/
+.omc/
+
+# Logs
+*.log
+
+# Generated project artifacts
+tmp/
+output/
+
+# Local project content you likely don't want to track
+json_scripts/
+assets/videos/

@@ -1,0 +1,60 @@
+{
+  "profile_name": "default_shorts",
+  "resolution": {
+    "width": 1080,
+    "height": 1920
+  },
+  "fps": 30,
+  "default_voice": "NamMinh",
+  "default_background": "assets/videos/",
+  "global_audio": {
+    "bgm_folder": "assets/audio/bgm/",
+    "default_bgm_volume": 0.15
+  },
+  "tts": {
+    "default_rate": "+0%",
+    "default_pitch": "+0Hz",
+    "default_volume": "+0%"
+  },
+  "subtitle": {
+    "default_preset": "minimal",
+    "presets": {
+      "minimal": {
+        "style": "Default",
+        "highlight_style": "Highlight",
+        "subtitle_mode": "standard",
+        "highlight_keywords": [],
+        "max_chars_per_line": 30,
+        "max_lines_per_caption": 2,
+        "min_duration": 1.0,
+        "max_duration": 2.7,
+        "max_cps": 15.0,
+        "pause_break_sec": 0.4
+      },
+      "energetic": {
+        "style": "Default",
+        "highlight_style": "Highlight",
+        "subtitle_mode": "standard",
+        "highlight_keywords": [],
+        "max_chars_per_line": 24,
+        "max_lines_per_caption": 2,
+        "min_duration": 0.8,
+        "max_duration": 2.1,
+        "max_cps": 17.0,
+        "pause_break_sec": 0.3
+      },
+      "cinematic": {
+        "style": "Default",
+        "highlight_style": "Highlight",
+        "subtitle_mode": "standard",
+        "highlight_keywords": [],
+        "max_chars_per_line": 26,
+        "max_lines_per_caption": 2,
+        "min_duration": 1.2,
+        "max_duration": 3.0,
+        "max_cps": 14.0,
+        "pause_break_sec": 0.45
+      }
+    }
+  }
+}

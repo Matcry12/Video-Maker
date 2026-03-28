@@ -1,0 +1,2759 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Maker</title>
+    <style>
+        :root {
+            --bg-app: #141b2e;
+            --bg-panel: #1b2541;
+            --bg-surface: #112f54;
+            --bg-surface-alt: #243657;
+            --bg-video: #000000;
+
+            --text-primary: #ecf1ff;
+            --text-secondary: #b6c2dc;
+            --text-link: #ff6a83;
+
+            --accent-primary: #ff5f7a;
+            --accent-secondary: #6453a3;
+            --danger: #cf4a3f;
+            --success-bg: #1e4a3f;
+            --success-text: #9ee2c7;
+            --error-bg: #4b1f2b;
+            --error-text: #ff9aa9;
+
+            --border-default: #314565;
+            --border-strong: #3b5b88;
+            --focus-ring: rgba(255, 95, 122, 0.4);
+
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 10px;
+            --space-4: 12px;
+            --space-5: 16px;
+            --space-6: 20px;
+
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-pill: 999px;
+
+            --font-xs: 0.8em;
+            --font-sm: 0.85em;
+            --font-md: 0.95em;
+            --font-lg: 1.1em;
+
+            --shadow-1: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "Segoe UI", sans-serif;
+            background: var(--bg-app);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .container { max-width: 1480px; margin: 0 auto; padding: var(--space-5); }
+        h1 { margin: 0; color: var(--accent-primary); }
+        h2 { color: var(--accent-primary); margin-bottom: var(--space-4); font-size: var(--font-lg); }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--space-4);
+            padding: var(--space-4) var(--space-5);
+            margin-bottom: var(--space-5);
+            border-radius: var(--radius-lg);
+            background: rgba(20, 27, 46, 0.9);
+            border: 1px solid var(--border-default);
+            backdrop-filter: blur(8px);
+            box-shadow: var(--shadow-1);
+        }
+        .topbar-main {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            flex-wrap: wrap;
+        }
+        .app-title { font-size: 1.4rem; line-height: 1.1; }
+        .topbar-script {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            min-width: 280px;
+        }
+        .topbar-script label {
+            margin: 0;
+            color: var(--text-secondary);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .topbar-script input {
+            min-width: 240px;
+            max-width: 420px;
+        }
+        .topbar-actions { display: inline-flex; gap: var(--space-2); flex-wrap: wrap; }
+        .save-state {
+            font-size: var(--font-sm);
+            font-weight: 600;
+            border-radius: var(--radius-pill);
+            padding: 4px 10px;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+        .save-state.is-saved {
+            background: rgba(30, 74, 63, 0.55);
+            color: var(--success-text);
+            border-color: rgba(158, 226, 199, 0.3);
+        }
+        .save-state.is-dirty {
+            background: rgba(255, 95, 122, 0.15);
+            color: #ffd7df;
+            border-color: rgba(255, 95, 122, 0.35);
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: minmax(260px, 320px) minmax(420px, 1fr) minmax(280px, 340px);
+            gap: var(--space-5);
+            align-items: start;
+        }
+        .panel {
+            background: var(--bg-panel);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            box-shadow: var(--shadow-1);
+        }
+        .panel-left { grid-column: 1; }
+        .panel-center { grid-column: 2; }
+        .panel-right { grid-column: 3; }
+
+        label {
+            display: block;
+            font-size: var(--font-sm);
+            color: var(--text-secondary);
+            margin-bottom: var(--space-1);
+            margin-top: var(--space-3);
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            font-size: var(--font-md);
+            font-family: inherit;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+        input::placeholder, textarea::placeholder { color: var(--text-secondary); opacity: 0.85; }
+        textarea { resize: vertical; min-height: 60px; }
+        input:focus, select:focus, textarea:focus { outline: none; }
+        input:focus-visible, select:focus-visible, textarea:focus-visible {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--focus-ring);
+            background: var(--bg-surface-alt);
+        }
+
+        button, .btn-import-label {
+            padding: var(--space-2) var(--space-5);
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: opacity 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button:hover, .btn-import-label:hover { opacity: 0.92; transform: translateY(-1px); }
+        button:disabled, .btn-import-label:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+        button:focus-visible, .btn-import-label:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--focus-ring);
+        }
+
+        .btn-primary { background: var(--accent-primary); color: #fff; }
+        .btn-secondary { background: var(--accent-secondary); color: #fff; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-small { padding: 5px 10px; font-size: var(--font-xs); }
+        .btn-toggle { background: var(--bg-surface-alt); color: var(--text-primary); }
+        .btn-toggle.is-active { background: var(--accent-primary); color: #fff; }
+        .btn-import-label { margin-left: 5px; }
+        .btn-import-label input { display: none; }
+
+        .block {
+            background: var(--bg-surface);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            margin-bottom: var(--space-3);
+            position: relative;
+            border-left: 3px solid var(--accent-primary);
+            border: 1px solid var(--border-default);
+        }
+        .block.is-selected {
+            border-color: var(--border-strong);
+            box-shadow: 0 0 0 2px rgba(100, 83, 163, 0.35);
+        }
+        .block.drag-over {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(255, 95, 122, 0.35);
+        }
+        .block:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--focus-ring);
+        }
+        .block.dragging { opacity: 0.65; }
+        .block-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2); }
+        .block-num { font-weight: 700; color: var(--accent-primary); }
+        .block-header-tools { display: inline-flex; gap: 6px; align-items: center; }
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            padding: 4px 8px;
+            min-width: 28px;
+        }
+        .btn-ghost:hover {
+            color: var(--text-primary);
+            border-color: var(--border-strong);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .drag-handle {
+            cursor: grab;
+            border: 1px dashed var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            padding: 2px 8px;
+            user-select: none;
+            font-size: var(--font-sm);
+        }
+        .drag-handle:active { cursor: grabbing; }
+        .block-body.is-hidden { display: none; }
+        .block-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+        .block-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-3); }
+        .block .btn-danger { position: absolute; top: var(--space-3); right: var(--space-3); }
+        .script-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: 6px; }
+
+        .editor-toolbar {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--space-2);
+            flex-wrap: wrap;
+        }
+        .editor-toolbar h2 { margin: 0; }
+        .mode-controls { display: inline-flex; align-items: center; gap: var(--space-2); }
+        .visual-editor { margin-top: var(--space-3); }
+        .json-editor { margin-top: var(--space-3); display: none; }
+        .json-area {
+            min-height: 300px;
+            font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+            font-size: 0.85em;
+            tab-size: 2;
+        }
+        .json-tools {
+            margin-top: var(--space-2);
+            display: flex;
+            gap: var(--space-2);
+            flex-wrap: wrap;
+        }
+        .json-lint {
+            margin-top: var(--space-3);
+            padding: var(--space-3);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-default);
+            background: rgba(17, 47, 84, 0.45);
+            font-size: var(--font-sm);
+            color: var(--text-secondary);
+        }
+        .json-lint[hidden] { display: none; }
+        .json-lint.is-valid {
+            border-color: rgba(158, 226, 199, 0.4);
+            color: var(--success-text);
+            background: rgba(30, 74, 63, 0.4);
+        }
+        .json-lint.is-error {
+            border-color: rgba(255, 154, 169, 0.45);
+            color: var(--error-text);
+            background: rgba(75, 31, 43, 0.5);
+        }
+        .json-diff {
+            margin-top: var(--space-3);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: rgba(17, 47, 84, 0.45);
+            overflow: hidden;
+        }
+        .json-diff[hidden] { display: none; }
+        .json-diff-header {
+            padding: var(--space-2) var(--space-3);
+            border-bottom: 1px solid var(--border-default);
+            font-size: var(--font-sm);
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            gap: var(--space-2);
+            flex-wrap: wrap;
+        }
+        .json-diff-body {
+            max-height: 280px;
+            overflow: auto;
+            font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+        .diff-line {
+            display: flex;
+            gap: 8px;
+            padding: 2px var(--space-3);
+            white-space: pre;
+        }
+        .diff-marker {
+            width: 14px;
+            text-align: center;
+            user-select: none;
+            opacity: 0.95;
+        }
+        .diff-line.added {
+            background: rgba(158, 226, 199, 0.1);
+            color: #b8f0d9;
+        }
+        .diff-line.removed {
+            background: rgba(255, 154, 169, 0.12);
+            color: #ffd1da;
+        }
+        .diff-line.context { color: #b8c6e1; }
+        .mt-sm { margin-top: var(--space-2); }
+        .mt-lg { margin-top: var(--space-6); }
+        .block-actions-top { display: flex; justify-content: flex-end; margin-bottom: var(--space-2); }
+
+        .script-list { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-5); }
+        .settings-group {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: var(--space-4);
+            margin-bottom: var(--space-4);
+        }
+        .settings-group:last-child { margin-bottom: 0; }
+        .group-title {
+            margin: 0 0 var(--space-2) 0;
+            font-size: var(--font-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-secondary);
+        }
+        .settings-group label { margin-top: var(--space-2); }
+        .hint-text {
+            margin-top: var(--space-1);
+            font-size: 0.78em;
+            line-height: 1.35;
+            color: var(--text-secondary);
+        }
+        .hint-text + label { margin-top: var(--space-3); }
+        .settings-actions {
+            display: flex;
+            gap: var(--space-2);
+            flex-wrap: wrap;
+            margin-top: var(--space-3);
+        }
+        .settings-actions .btn-small {
+            background: var(--bg-surface-alt);
+            color: var(--text-primary);
+            border: 1px solid var(--border-default);
+        }
+        .settings-actions .btn-small:hover { border-color: var(--border-strong); }
+        .search-input { margin-top: var(--space-2); }
+        .compare-actions {
+            display: flex;
+            gap: var(--space-2);
+            flex-wrap: wrap;
+            margin-top: var(--space-2);
+        }
+        .compare-actions .btn-small {
+            background: rgba(255, 95, 122, 0.18);
+            border: 1px solid rgba(255, 95, 122, 0.35);
+            color: #ffd7df;
+        }
+        .compare-actions .btn-small:hover {
+            border-color: rgba(255, 95, 122, 0.6);
+            background: rgba(255, 95, 122, 0.24);
+        }
+
+        .script-chip {
+            padding: 6px 12px;
+            background: var(--bg-surface);
+            border-radius: var(--radius-pill);
+            cursor: pointer;
+            font-size: var(--font-sm);
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+        .script-chip:hover, .script-chip.active {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            background: rgba(255, 95, 122, 0.08);
+        }
+        .script-chip:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--focus-ring);
+        }
+
+        .status-bar {
+            padding: var(--space-4) var(--space-5);
+            border-radius: var(--radius-md);
+            margin-top: var(--space-5);
+            font-size: 0.9em;
+            display: none;
+            border: 1px solid transparent;
+        }
+        .status-bar.show { display: block; }
+        .status-loading, .status-processing, .status-done {
+            background: var(--success-bg);
+            color: var(--success-text);
+            border-color: rgba(158, 226, 199, 0.35);
+        }
+        .status-error {
+            background: var(--error-bg);
+            color: var(--error-text);
+            border-color: rgba(255, 154, 169, 0.4);
+        }
+        .error-panel {
+            margin-top: var(--space-3);
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255, 154, 169, 0.45);
+            background: rgba(75, 31, 43, 0.52);
+        }
+        .error-panel[hidden] { display: none; }
+        .error-headline {
+            margin: 0;
+            font-size: var(--font-md);
+            color: #ffdfe5;
+            font-weight: 700;
+        }
+        .error-hint {
+            margin-top: var(--space-2);
+            color: var(--error-text);
+            font-size: var(--font-sm);
+        }
+        .error-details {
+            margin-top: var(--space-2);
+            border: 1px solid rgba(255, 154, 169, 0.35);
+            border-radius: var(--radius-sm);
+            background: rgba(20, 27, 46, 0.55);
+            overflow: hidden;
+        }
+        .error-details[hidden] { display: none; }
+        .error-details summary {
+            cursor: pointer;
+            padding: var(--space-2) var(--space-3);
+            font-size: var(--font-sm);
+            color: #ffd7df;
+            user-select: none;
+        }
+        .error-details pre {
+            margin: 0;
+            padding: var(--space-3);
+            border-top: 1px solid rgba(255, 154, 169, 0.25);
+            color: #ffdfe5;
+            font-size: var(--font-xs);
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+        }
+        .job-timeline {
+            margin-top: var(--space-4);
+            padding: var(--space-3);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-default);
+            background: rgba(17, 47, 84, 0.45);
+        }
+        .job-timeline[hidden] { display: none; }
+        .timeline-steps {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: var(--space-2);
+        }
+        .timeline-step {
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            padding: 7px 8px;
+            font-size: var(--font-xs);
+            color: var(--text-secondary);
+            text-align: center;
+            background: rgba(20, 27, 46, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .timeline-step.is-complete {
+            border-color: rgba(158, 226, 199, 0.4);
+            color: var(--success-text);
+            background: rgba(30, 74, 63, 0.45);
+        }
+        .timeline-step.is-active {
+            border-color: rgba(255, 95, 122, 0.45);
+            color: #ffd7df;
+            background: rgba(255, 95, 122, 0.16);
+        }
+        .timeline-step.is-error {
+            border-color: rgba(255, 154, 169, 0.45);
+            color: var(--error-text);
+            background: rgba(75, 31, 43, 0.52);
+        }
+        .block-progress {
+            margin-top: var(--space-3);
+            display: grid;
+            gap: 6px;
+        }
+        .block-progress[hidden] { display: none; }
+        .block-progress-label {
+            font-size: var(--font-sm);
+            color: var(--text-secondary);
+        }
+        .block-progress-track {
+            width: 100%;
+            height: 10px;
+            border-radius: var(--radius-pill);
+            background: rgba(20, 27, 46, 0.85);
+            border: 1px solid var(--border-default);
+            overflow: hidden;
+        }
+        .block-progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-secondary), var(--accent-primary));
+            transition: width 0.2s ease;
+        }
+
+        .output-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: var(--space-3);
+            background: var(--bg-surface);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--space-2);
+            border: 1px solid var(--border-default);
+            gap: var(--space-3);
+        }
+        .output-main { min-width: 0; flex: 1; }
+        .output-title {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            flex-wrap: wrap;
+        }
+        .output-meta-line {
+            margin-top: 6px;
+            color: var(--text-secondary);
+            font-size: var(--font-xs);
+        }
+        .output-thumb {
+            width: 120px;
+            height: 72px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-default);
+            background: #000;
+            object-fit: cover;
+            margin-top: var(--space-2);
+        }
+        .output-actions {
+            display: inline-flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            min-width: 210px;
+        }
+        .btn-link {
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-xs);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-secondary);
+            color: #fff !important;
+            border: none;
+        }
+        .btn-link:hover { opacity: 0.92; transform: translateY(-1px); }
+        .output-actions .btn-link:hover { text-decoration: none; }
+        .output-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: var(--space-2);
+            gap: var(--space-2);
+        }
+        .thumb-toggle {
+            font-size: var(--font-sm);
+            color: var(--text-secondary);
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .output-item a { color: var(--text-link); text-decoration: none; }
+        .output-item a:hover { text-decoration: underline; }
+        .output-empty { color: var(--text-secondary); }
+        .output-meta {
+            display: inline-flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-left: var(--space-2);
+        }
+        .output-badge {
+            padding: 2px 8px;
+            border-radius: var(--radius-pill);
+            font-size: var(--font-xs);
+            font-weight: 600;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+        .output-badge.preset {
+            color: #ffd7df;
+            border-color: rgba(255, 95, 122, 0.5);
+            background: rgba(255, 95, 122, 0.18);
+        }
+        .output-badge.group {
+            color: var(--text-secondary);
+            border-color: var(--border-default);
+            background: rgba(20, 27, 46, 0.6);
+        }
+        .compare-group-panel {
+            margin-bottom: var(--space-3);
+            padding: var(--space-3);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: rgba(17, 47, 84, 0.45);
+        }
+        .compare-group-panel[hidden] { display: none; }
+        .compare-group-title {
+            margin: 0 0 var(--space-2) 0;
+            font-size: var(--font-sm);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .compare-group-list {
+            display: grid;
+            gap: 6px;
+        }
+        .compare-group-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--space-2);
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-default);
+            background: rgba(20, 27, 46, 0.55);
+        }
+        .actions { display: flex; gap: var(--space-3); margin-top: var(--space-5); flex-wrap: wrap; }
+        .selected-hint {
+            margin-top: var(--space-2);
+            color: var(--text-secondary);
+            font-size: var(--font-sm);
+        }
+        .validation-panel {
+            margin-top: var(--space-3);
+            padding: var(--space-3);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255, 154, 169, 0.45);
+            background: rgba(75, 31, 43, 0.5);
+        }
+        .validation-panel[hidden] { display: none; }
+        .validation-title {
+            font-size: var(--font-sm);
+            font-weight: 700;
+            color: var(--error-text);
+            margin-bottom: var(--space-2);
+        }
+        .validation-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 6px;
+        }
+        .validation-group {
+            font-size: var(--font-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-secondary);
+            margin-top: var(--space-1);
+        }
+        .validation-item {
+            width: 100%;
+            justify-content: flex-start;
+            text-align: left;
+            padding: 7px 10px;
+            border: 1px solid rgba(255, 154, 169, 0.4);
+            border-radius: var(--radius-sm);
+            background: rgba(255, 154, 169, 0.09);
+            color: #ffdfe5;
+            font-size: var(--font-sm);
+            font-weight: 500;
+        }
+        .validation-item:hover { background: rgba(255, 154, 169, 0.14); }
+        .field-invalid {
+            border-color: rgba(255, 154, 169, 0.75) !important;
+            box-shadow: 0 0 0 2px rgba(255, 154, 169, 0.25);
+        }
+
+        .block-section + .block-section {
+            margin-top: var(--space-3);
+            padding-top: var(--space-3);
+            border-top: 1px dashed var(--border-default);
+        }
+        .block-section-title {
+            margin: 0 0 var(--space-2) 0;
+            font-size: var(--font-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-secondary);
+        }
+        .advanced-panel {
+            margin-top: var(--space-3);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: rgba(36, 54, 87, 0.45);
+            overflow: hidden;
+        }
+        .advanced-panel summary {
+            cursor: pointer;
+            padding: var(--space-2) var(--space-3);
+            font-size: var(--font-sm);
+            font-weight: 600;
+            color: var(--text-secondary);
+            list-style: none;
+            user-select: none;
+        }
+        .advanced-panel summary::-webkit-details-marker { display: none; }
+        .advanced-panel summary::after {
+            content: "▾";
+            float: right;
+            color: var(--text-secondary);
+            transform: translateY(-1px);
+        }
+        .advanced-panel[open] summary::after { content: "▴"; }
+        .advanced-panel[open] summary { border-bottom: 1px solid var(--border-default); }
+        .advanced-body { padding: var(--space-3); }
+
+        video {
+            width: 100%;
+            max-height: 400px;
+            border-radius: var(--radius-md);
+            margin-top: var(--space-3);
+            background: var(--bg-video);
+        }
+
+        @media (max-width: 1280px) {
+            .workspace {
+                grid-template-columns: minmax(260px, 340px) minmax(420px, 1fr);
+            }
+            .panel-right { grid-column: 1 / -1; }
+        }
+
+        @media (max-width: 900px) {
+            .container { padding: var(--space-4); }
+            .topbar {
+                position: static;
+                padding: var(--space-4);
+            }
+            .topbar-main, .topbar-actions { width: 100%; }
+            .topbar-script { width: 100%; }
+            .topbar-script input { width: 100%; min-width: 0; max-width: 100%; }
+            .workspace { grid-template-columns: 1fr; gap: var(--space-4); }
+            .panel-left, .panel-center, .panel-right { grid-column: 1; }
+            .block-row, .block-row-3, .script-grid { grid-template-columns: 1fr; }
+            .mode-controls { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="topbar">
+            <div class="topbar-main">
+                <h1 class="app-title">Video Maker</h1>
+                <div class="topbar-script">
+                    <label for="scriptName">Script</label>
+                    <input type="text" id="scriptName" placeholder="my_video" value="">
+                </div>
+                <span id="saveState" class="save-state is-saved">Saved</span>
+            </div>
+            <div class="topbar-actions">
+                <button class="btn-secondary" onclick="saveScript()">Save Script</button>
+                <button class="btn-primary" onclick="generate()">Generate Video</button>
+            </div>
+        </header>
+
+        <div class="workspace">
+            <!-- Left: Script Settings -->
+            <aside class="panel panel-left">
+                <h2>Script Settings</h2>
+
+                <section class="settings-group">
+                    <h3 class="group-title">Project</h3>
+                    <label for="scriptSearch">Search Scripts</label>
+                    <input type="text" id="scriptSearch" class="search-input" placeholder="Filter scripts by name..." oninput="renderScriptList()">
+                    <label id="loadScriptLabel">Load Script</label>
+                    <div class="script-list" id="scriptList" role="listbox" aria-labelledby="loadScriptLabel">
+                        {% for s in scripts %}
+                        <button type="button" class="script-chip" role="option" aria-selected="false" onclick="loadScriptByEncoded('{{ s | urlencode }}')">{{ s }}</button>
+                        {% endfor %}
+                    </div>
+
+                    <label for="scriptLang">Language</label>
+                    <select id="scriptLang">
+                        <option value="vi-VN">Vietnamese (vi-VN)</option>
+                        <option value="en-US">English (en-US)</option>
+                    </select>
+                    <div class="settings-actions">
+                        <button class="btn-small" onclick="duplicateScript()">Duplicate</button>
+                        <button class="btn-small" onclick="exportScript()">Export JSON</button>
+                        <button class="btn-small btn-danger" onclick="deleteCurrentScript()">Delete</button>
+                    </div>
+                </section>
+
+                <section class="settings-group">
+                    <h3 class="group-title">Background</h3>
+                    <label for="scriptBackground">Main Background (optional)</label>
+                    <input type="text" id="scriptBackground" placeholder="assets/videos/minecraft_parkour_1.mp4">
+                </section>
+
+                <section class="settings-group">
+                    <h3 class="group-title">Subtitle Defaults</h3>
+                    <label for="scriptSubtitlePreset">Subtitle Preset</label>
+                    <select id="scriptSubtitlePreset"></select>
+                    <p class="hint-text">This preset is the default for all blocks unless a block sets its own subtitle preset.</p>
+                    <div class="settings-actions">
+                        <button class="btn-small" onclick="applySubtitlePresetToAll()">Apply Preset to All Blocks</button>
+                    </div>
+                    <div class="compare-actions">
+                        <button class="btn-small" onclick="quickRenderPreset('minimal')">Render Minimal</button>
+                        <button class="btn-small" onclick="quickRenderPreset('energetic')">Render Energetic</button>
+                        <button class="btn-small" onclick="quickRenderPreset('cinematic')">Render Cinematic</button>
+                        <button class="btn-small" onclick="renderPresetComparison()">Render 3-Preset Compare</button>
+                    </div>
+                    <p class="hint-text">Quick renders create outputs tagged with preset + compare group for fast A/B subtitle review.</p>
+                </section>
+
+                <section class="settings-group">
+                    <h3 class="group-title">Global Voice</h3>
+                    <label for="scriptDefaultVoice">New Block Voice</label>
+                    <select id="scriptDefaultVoice"></select>
+
+                    <details class="advanced-panel">
+                        <summary>Advanced Voice Controls</summary>
+                        <div class="advanced-body">
+                            <p class="hint-text">Format: rate <code>+10%</code> / <code>-5%</code>, pitch <code>+8Hz</code> / <code>-3Hz</code>, volume <code>+6%</code> / <code>-4%</code>.</p>
+                            <div class="block-row-3">
+                                <div>
+                                    <label for="scriptVoiceRate">Voice Rate (global, optional)</label>
+                                    <input type="text" id="scriptVoiceRate" placeholder="+0%">
+                                </div>
+                                <div>
+                                    <label for="scriptVoicePitch">Voice Pitch (global, optional)</label>
+                                    <input type="text" id="scriptVoicePitch" placeholder="+0Hz">
+                                </div>
+                                <div>
+                                    <label for="scriptVoiceVolume">Voice Volume (global, optional)</label>
+                                    <input type="text" id="scriptVoiceVolume" placeholder="+0%">
+                                </div>
+                            </div>
+                            <p class="hint-text">These values apply to all blocks unless a block-level voice override is set.</p>
+                        </div>
+                    </details>
+                    <div class="settings-actions">
+                        <button class="btn-small" onclick="applyVoiceToAll()">Apply Voice to All Blocks</button>
+                        <button class="btn-small" onclick="applyVoiceControlsToAll()">Apply Voice Controls to All Blocks</button>
+                    </div>
+                </section>
+            </aside>
+
+            <!-- Center: Editor -->
+            <main class="panel panel-center">
+                <div class="editor-toolbar">
+                    <h2>Editor</h2>
+                    <div class="mode-controls">
+                        <button class="btn-toggle btn-small is-active" id="btnVisual" onclick="setMode('visual')">Visual</button>
+                        <button class="btn-toggle btn-small" id="btnJson" onclick="setMode('json')">JSON</button>
+                        <label class="btn-secondary btn-small btn-import-label">
+                            Import
+                            <input type="file" accept=".json" onchange="importFile(event)">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Visual block editor -->
+                <div id="visualEditor" class="visual-editor">
+                    <div class="block-actions-top">
+                        <button class="btn-secondary btn-small" onclick="addBlock()">+ Add Block</button>
+                    </div>
+                    <p id="selectedBlockHint" class="selected-hint">No block selected. Click a block to enable shortcut actions.</p>
+                    <section id="validationPanel" class="validation-panel" hidden>
+                        <h3 class="validation-title">Fix these issues before generating</h3>
+                        <div id="validationList" class="validation-list"></div>
+                    </section>
+                    <div id="blocksContainer"></div>
+                </div>
+
+                <!-- JSON editor -->
+                <div id="jsonEditor" class="json-editor">
+                    <textarea id="jsonArea" class="json-area"></textarea>
+                    <div class="json-tools">
+                        <button class="btn-secondary btn-small" onclick="formatJsonEditor()">Format JSON</button>
+                        <button class="btn-secondary btn-small" onclick="lintJsonEditor()">Lint JSON</button>
+                        <button class="btn-secondary btn-small" onclick="diffJsonVsSaved()">Diff vs Saved</button>
+                        <button class="btn-secondary btn-small" onclick="applyJson()">Apply JSON</button>
+                    </div>
+                    <div id="jsonLintResult" class="json-lint" hidden></div>
+                    <section id="jsonDiffPanel" class="json-diff" hidden>
+                        <div id="jsonDiffHeader" class="json-diff-header"></div>
+                        <div id="jsonDiffBody" class="json-diff-body"></div>
+                    </section>
+                </div>
+
+                <section id="jobTimeline" class="job-timeline" hidden>
+                    <div id="timelineSteps" class="timeline-steps"></div>
+                    <div id="blockProgress" class="block-progress" hidden>
+                        <div id="blockProgressLabel" class="block-progress-label"></div>
+                        <div class="block-progress-track">
+                            <div id="blockProgressFill" class="block-progress-fill"></div>
+                        </div>
+                    </div>
+                </section>
+                <div id="statusBar" class="status-bar" role="status" aria-live="polite"></div>
+                <section id="errorPanel" class="error-panel" role="alert" aria-live="assertive" hidden>
+                    <h3 id="errorHeadline" class="error-headline"></h3>
+                    <p id="errorHint" class="error-hint" hidden></p>
+                    <details id="errorDetailsWrap" class="error-details" hidden>
+                        <summary>Technical details</summary>
+                        <pre id="errorDetails"></pre>
+                    </details>
+                </section>
+            </main>
+
+            <!-- Right: Output -->
+            <section class="panel panel-right">
+                <h2>Output Videos</h2>
+                <div class="output-toolbar">
+                    <label class="thumb-toggle">
+                        <input type="checkbox" id="showOutputThumbnails" onchange="renderOutputList(latestOutputItems)">
+                        Show thumbnails
+                    </label>
+                </div>
+                <section id="compareGroupPanel" class="compare-group-panel" hidden>
+                    <h3 id="compareGroupTitle" class="compare-group-title"></h3>
+                    <div id="compareGroupList" class="compare-group-list"></div>
+                </section>
+                <div id="outputList"></div>
+
+                <h2 class="mt-lg">Preview</h2>
+                <video id="preview" controls></video>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const VOICES = {{ voices | tojson }};
+        const SUBTITLE_PRESETS = {{ subtitle_presets | tojson }};
+        const DEFAULT_SUBTITLE_PRESET = {{ default_subtitle_preset | tojson }};
+        const INITIAL_SCRIPTS = {{ scripts | tojson }};
+
+        let scriptNames = [...INITIAL_SCRIPTS];
+        let activeScriptName = null;
+        let blocks = [];
+        let currentMode = 'visual';
+        let isDirty = false;
+        let suppressDirtyTracking = false;
+        let selectedBlockIndex = null;
+        let dragSourceIndex = null;
+        let validationErrors = [];
+        let latestOutputItems = [];
+        let validateDebounceTimer = null;
+
+        const SUBTITLE_MODES = ['standard', 'progressive'];
+        const RATE_PERCENT_RE = /^[+-]\d+%$/;
+        const PITCH_HZ_RE = /^[+-]\d+Hz$/i;
+        const JOB_STAGE_ORDER = ['loading', 'tts', 'subtitle', 'rendering', 'done'];
+        const JOB_STAGE_LABELS = {
+            loading: 'Loading Models',
+            tts: 'TTS',
+            subtitle: 'Subtitle',
+            rendering: 'Rendering',
+            done: 'Done',
+            error: 'Error',
+        };
+        const COMPARE_PRESET_ORDER = ['minimal', 'energetic', 'cinematic'];
+
+        function updateSaveState(dirty) {
+            isDirty = dirty;
+            const badge = document.getElementById('saveState');
+            if (!badge) return;
+            badge.classList.toggle('is-dirty', dirty);
+            badge.classList.toggle('is-saved', !dirty);
+            badge.textContent = dirty ? 'Unsaved changes' : 'Saved';
+        }
+
+        function markDirty() {
+            if (suppressDirtyTracking) return;
+            updateSaveState(true);
+        }
+
+        function markSaved() {
+            updateSaveState(false);
+        }
+
+        function scheduleValidation(delayMs = 120) {
+            if (validateDebounceTimer) clearTimeout(validateDebounceTimer);
+            validateDebounceTimer = setTimeout(() => {
+                validateDebounceTimer = null;
+                validateForm();
+            }, delayMs);
+        }
+
+        function emptyToNull(value) {
+            const v = (value ?? '').toString().trim();
+            return v === '' ? null : v;
+        }
+
+        function keywordTextFromArray(value) {
+            if (Array.isArray(value)) return value.join(', ');
+            if (typeof value === 'string') return value;
+            return '';
+        }
+
+        function parseKeywordText(value) {
+            return (value || '')
+                .split(',')
+                .map(s => s.trim())
+                .filter(Boolean);
+        }
+
+        function updateBlockField(index, field, value, nullIfEmpty = false) {
+            if (!blocks[index]) return;
+            blocks[index][field] = nullIfEmpty ? emptyToNull(value) : value;
+        }
+
+        function addValidationError(errors, group, fieldId, message, blockIndex = null) {
+            errors.push({ group, fieldId, message, blockIndex });
+        }
+
+        function validatePercentValue(value) {
+            return !value || RATE_PERCENT_RE.test(value);
+        }
+
+        function validatePitchValue(value) {
+            return !value || PITCH_HZ_RE.test(value);
+        }
+
+        function setFieldValidationState(errors) {
+            document.querySelectorAll('.field-invalid').forEach(el => el.classList.remove('field-invalid'));
+            document.querySelectorAll('[aria-invalid="true"]').forEach(el => el.removeAttribute('aria-invalid'));
+
+            const seen = new Set();
+            for (const err of errors) {
+                if (!err.fieldId || seen.has(err.fieldId)) continue;
+                const el = document.getElementById(err.fieldId);
+                if (!el) continue;
+                el.classList.add('field-invalid');
+                el.setAttribute('aria-invalid', 'true');
+                seen.add(err.fieldId);
+            }
+        }
+
+        function renderValidationSummary() {
+            const panel = document.getElementById('validationPanel');
+            const list = document.getElementById('validationList');
+            if (!panel || !list) return;
+
+            if (!validationErrors.length) {
+                panel.hidden = true;
+                list.innerHTML = '';
+                return;
+            }
+
+            const grouped = validationErrors.reduce((acc, err, idx) => {
+                if (!acc[err.group]) acc[err.group] = [];
+                acc[err.group].push({ ...err, idx });
+                return acc;
+            }, {});
+
+            list.innerHTML = Object.entries(grouped).map(([groupName, items]) => {
+                const row = items.map(item => `
+                    <button type="button" class="validation-item" onclick="focusValidationError(${item.idx})">${escapeHtml(item.message)}</button>
+                `).join('');
+                return `
+                    <div class="validation-group">${escapeHtml(groupName)}</div>
+                    ${row}
+                `;
+            }).join('');
+            panel.hidden = false;
+        }
+
+        function validateForm() {
+            const errors = [];
+
+            const scriptVoiceRate = emptyToNull(document.getElementById('scriptVoiceRate').value);
+            const scriptVoicePitch = emptyToNull(document.getElementById('scriptVoicePitch').value);
+            const scriptVoiceVolume = emptyToNull(document.getElementById('scriptVoiceVolume').value);
+            const scriptSubtitlePreset = emptyToNull(document.getElementById('scriptSubtitlePreset').value);
+
+            if (!validatePercentValue(scriptVoiceRate)) {
+                addValidationError(errors, 'Script Settings', 'scriptVoiceRate', 'Global voice rate must match +10% or -5%.');
+            }
+            if (!validatePitchValue(scriptVoicePitch)) {
+                addValidationError(errors, 'Script Settings', 'scriptVoicePitch', 'Global voice pitch must match +8Hz or -3Hz.');
+            }
+            if (!validatePercentValue(scriptVoiceVolume)) {
+                addValidationError(errors, 'Script Settings', 'scriptVoiceVolume', 'Global voice volume must match +6% or -4%.');
+            }
+            if (scriptSubtitlePreset && !SUBTITLE_PRESETS.includes(scriptSubtitlePreset)) {
+                addValidationError(errors, 'Script Settings', 'scriptSubtitlePreset', `Script subtitle preset "${scriptSubtitlePreset}" is not valid.`);
+            }
+
+            blocks.forEach((block, i) => {
+                const group = `Block ${i + 1}`;
+                if (!(block.text || '').trim()) {
+                    addValidationError(errors, group, `block-${i}-text`, 'Text is required.', i);
+                }
+
+                const voiceRate = emptyToNull(block.voice_rate);
+                const voicePitch = emptyToNull(block.voice_pitch);
+                const voiceVolume = emptyToNull(block.voice_volume);
+                const subtitlePreset = emptyToNull(block.subtitle_preset);
+                const subtitleMode = emptyToNull(block.subtitle_mode);
+
+                if (!validatePercentValue(voiceRate)) {
+                    addValidationError(errors, group, `block-${i}-voice-rate`, 'Voice rate must match +10% or -5%.', i);
+                }
+                if (!validatePitchValue(voicePitch)) {
+                    addValidationError(errors, group, `block-${i}-voice-pitch`, 'Voice pitch must match +8Hz or -3Hz.', i);
+                }
+                if (!validatePercentValue(voiceVolume)) {
+                    addValidationError(errors, group, `block-${i}-voice-volume`, 'Voice volume must match +6% or -4%.', i);
+                }
+                if (subtitlePreset && !SUBTITLE_PRESETS.includes(subtitlePreset)) {
+                    addValidationError(errors, group, `block-${i}-subtitle-preset`, `Subtitle preset "${subtitlePreset}" is not valid.`, i);
+                }
+                if (subtitleMode && !SUBTITLE_MODES.includes(subtitleMode)) {
+                    addValidationError(errors, group, `block-${i}-subtitle-mode`, `Subtitle mode "${subtitleMode}" is not valid.`, i);
+                }
+            });
+
+            validationErrors = errors;
+            setFieldValidationState(errors);
+            renderValidationSummary();
+            return { valid: errors.length === 0, errors };
+        }
+
+        function focusValidationError(index) {
+            const err = validationErrors[index];
+            if (!err) return;
+
+            if (typeof err.blockIndex === 'number' && blocks[err.blockIndex]) {
+                selectedBlockIndex = err.blockIndex;
+                if (blocks[err.blockIndex].__collapsed) {
+                    blocks[err.blockIndex].__collapsed = false;
+                    renderBlocks();
+                } else {
+                    refreshBlockSelection();
+                }
+            }
+
+            requestAnimationFrame(() => {
+                const el = document.getElementById(err.fieldId);
+                if (!el) return;
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.focus();
+            });
+        }
+
+        function normalizeJobStage(job) {
+            if (job && JOB_STAGE_ORDER.includes(job.stage)) return job.stage;
+            if (!job) return 'loading';
+            if (job.status === 'done') return 'done';
+            if (job.status === 'error') return 'rendering';
+            if (job.status === 'loading' || job.status === 'starting') return 'loading';
+            return 'rendering';
+        }
+
+        function renderJobTimeline(job) {
+            const panel = document.getElementById('jobTimeline');
+            const steps = document.getElementById('timelineSteps');
+            const blockPanel = document.getElementById('blockProgress');
+            const blockLabel = document.getElementById('blockProgressLabel');
+            const blockFill = document.getElementById('blockProgressFill');
+            if (!panel || !steps || !blockPanel || !blockLabel || !blockFill) return;
+
+            const stage = normalizeJobStage(job);
+            const stageIndex = JOB_STAGE_ORDER.indexOf(stage);
+            const resolvedIndex = stageIndex === -1 ? 0 : stageIndex;
+
+            steps.innerHTML = JOB_STAGE_ORDER.map((stageKey, idx) => {
+                const classes = ['timeline-step'];
+                const isDoneState = job.status === 'done';
+                const isErrorState = job.status === 'error';
+
+                if (idx < resolvedIndex || (isDoneState && idx <= resolvedIndex)) {
+                    classes.push('is-complete');
+                }
+                if (!isDoneState && !isErrorState && idx === resolvedIndex) {
+                    classes.push('is-active');
+                }
+                if (isErrorState && idx === resolvedIndex) {
+                    classes.push('is-error');
+                }
+
+                return `<div class="${classes.join(' ')}">${JOB_STAGE_LABELS[stageKey] || stageKey}</div>`;
+            }).join('');
+
+            const totalBlocks = Number(job.total_blocks || 0);
+            const currentBlock = Number(job.current_block || 0);
+            const canShowBlockProgress =
+                totalBlocks > 0 && ['tts', 'subtitle', 'rendering'].includes(stage);
+
+            if (canShowBlockProgress) {
+                const safeCurrent = Math.max(0, Math.min(currentBlock, totalBlocks));
+                const percent = Math.round((safeCurrent / totalBlocks) * 100);
+                blockLabel.textContent = `${JOB_STAGE_LABELS[stage]}: block ${safeCurrent}/${totalBlocks}`;
+                blockFill.style.width = `${percent}%`;
+                blockPanel.hidden = false;
+            } else {
+                blockLabel.textContent = '';
+                blockFill.style.width = '0%';
+                blockPanel.hidden = true;
+            }
+
+            panel.hidden = false;
+        }
+
+        function clearErrorPanel() {
+            const panel = document.getElementById('errorPanel');
+            const headline = document.getElementById('errorHeadline');
+            const hint = document.getElementById('errorHint');
+            const detailsWrap = document.getElementById('errorDetailsWrap');
+            const details = document.getElementById('errorDetails');
+            if (!panel || !headline || !hint || !detailsWrap || !details) return;
+            panel.hidden = true;
+            headline.textContent = '';
+            hint.textContent = '';
+            hint.hidden = true;
+            details.textContent = '';
+            detailsWrap.hidden = true;
+            detailsWrap.open = false;
+        }
+
+        function showErrorPanel(errorInfo) {
+            const panel = document.getElementById('errorPanel');
+            const headline = document.getElementById('errorHeadline');
+            const hint = document.getElementById('errorHint');
+            const detailsWrap = document.getElementById('errorDetailsWrap');
+            const details = document.getElementById('errorDetails');
+            if (!panel || !headline || !hint || !detailsWrap || !details) return;
+
+            headline.textContent = errorInfo.headline || 'Request failed.';
+            const hintText = (errorInfo.hint || '').trim();
+            hint.textContent = hintText;
+            hint.hidden = !hintText;
+
+            const detailsText = errorInfo.details
+                ? (typeof errorInfo.details === 'string'
+                    ? errorInfo.details
+                    : JSON.stringify(errorInfo.details, null, 2))
+                : '';
+            details.textContent = detailsText;
+            detailsWrap.hidden = !detailsText;
+            panel.hidden = false;
+        }
+
+        function normalizeApiError(errorLike, fallbackMessage = 'Request failed', status = null) {
+            let raw = errorLike;
+            if (raw && typeof raw === 'object' && raw.error) raw = raw.error;
+
+            if (raw && typeof raw === 'object' && raw.headline) {
+                const code = raw.code || 'UNKNOWN_ERROR';
+                return {
+                    code,
+                    status: raw.status ?? status,
+                    headline: raw.headline || fallbackMessage,
+                    details: raw.details || null,
+                    hint: raw.hint || null,
+                };
+            }
+
+            if (raw && typeof raw === 'object') {
+                const code = raw.code || 'UNKNOWN_ERROR';
+                return {
+                    code,
+                    status: raw.status ?? status,
+                    headline: raw.message || raw.error || fallbackMessage,
+                    details: raw.details || null,
+                    hint: raw.hint || null,
+                };
+            }
+
+            if (typeof raw === 'string') {
+                return {
+                    code: 'UNKNOWN_ERROR',
+                    status,
+                    headline: raw || fallbackMessage,
+                    details: null,
+                    hint: null,
+                };
+            }
+
+            if (raw instanceof Error) {
+                return {
+                    code: 'UNKNOWN_ERROR',
+                    status,
+                    headline: fallbackMessage,
+                    details: raw.message,
+                    hint: null,
+                };
+            }
+
+            return {
+                code: 'UNKNOWN_ERROR',
+                status,
+                headline: fallbackMessage,
+                details: null,
+                hint: null,
+            };
+        }
+
+        function showApiError(errorLike, fallbackMessage = 'Request failed') {
+            const normalized = normalizeApiError(errorLike, fallbackMessage);
+            showStatus(normalized.headline, 'error');
+            showErrorPanel(normalized);
+            return normalized;
+        }
+
+        async function fetchApi(url, options = {}, fallbackMessage = 'Request failed') {
+            let response;
+            try {
+                response = await fetch(url, options);
+            } catch (err) {
+                throw normalizeApiError(
+                    {
+                        code: 'NETWORK_ERROR',
+                        message: 'Network request failed.',
+                        details: String(err),
+                        hint: 'Ensure the server is running and retry.',
+                    },
+                    fallbackMessage,
+                );
+            }
+
+            let payload = null;
+            try {
+                payload = await response.json();
+            } catch (err) {
+                payload = null;
+            }
+
+            if (!response.ok) {
+                throw normalizeApiError(payload, fallbackMessage, response.status);
+            }
+            return payload;
+        }
+
+        function computeLineColumnFromIndex(text, index) {
+            const safeIndex = Math.max(0, Math.min(Number(index) || 0, text.length));
+            const upto = text.slice(0, safeIndex);
+            const lines = upto.split('\n');
+            const line = lines.length;
+            const column = (lines[lines.length - 1] || '').length + 1;
+            return { line, column };
+        }
+
+        function parseJsonErrorLocation(text, error) {
+            const msg = String(error?.message || '');
+            const posMatch = msg.match(/position\s+(\d+)/i);
+            if (posMatch) {
+                const idx = Number(posMatch[1]);
+                return { ...computeLineColumnFromIndex(text, idx), index: idx };
+            }
+            const lineColMatch = msg.match(/line\s+(\d+)\s+column\s+(\d+)/i);
+            if (lineColMatch) {
+                return {
+                    line: Number(lineColMatch[1]),
+                    column: Number(lineColMatch[2]),
+                    index: null,
+                };
+            }
+            return { line: null, column: null, index: null };
+        }
+
+        function parseJsonWithDiagnostics(text) {
+            try {
+                return { ok: true, value: JSON.parse(text), error: null, location: null };
+            } catch (err) {
+                return {
+                    ok: false,
+                    value: null,
+                    error: err,
+                    location: parseJsonErrorLocation(text, err),
+                };
+            }
+        }
+
+        function clearJsonLintResult() {
+            const lint = document.getElementById('jsonLintResult');
+            if (!lint) return;
+            lint.hidden = true;
+            lint.classList.remove('is-valid', 'is-error');
+            lint.textContent = '';
+        }
+
+        function setJsonLintResult({ isValid, message }) {
+            const lint = document.getElementById('jsonLintResult');
+            if (!lint) return;
+            lint.hidden = false;
+            lint.classList.remove('is-valid', 'is-error');
+            lint.classList.add(isValid ? 'is-valid' : 'is-error');
+            lint.textContent = message;
+        }
+
+        function clearJsonDiffPanel() {
+            const panel = document.getElementById('jsonDiffPanel');
+            const header = document.getElementById('jsonDiffHeader');
+            const body = document.getElementById('jsonDiffBody');
+            if (!panel || !header || !body) return;
+            panel.hidden = true;
+            header.textContent = '';
+            body.innerHTML = '';
+        }
+
+        function buildLineDiffLcs(oldLines, newLines) {
+            const m = oldLines.length;
+            const n = newLines.length;
+            const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+
+            for (let i = m - 1; i >= 0; i -= 1) {
+                for (let j = n - 1; j >= 0; j -= 1) {
+                    if (oldLines[i] === newLines[j]) dp[i][j] = dp[i + 1][j + 1] + 1;
+                    else dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+                }
+            }
+
+            const out = [];
+            let i = 0;
+            let j = 0;
+            while (i < m && j < n) {
+                if (oldLines[i] === newLines[j]) {
+                    out.push({ type: 'context', text: oldLines[i] });
+                    i += 1;
+                    j += 1;
+                } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+                    out.push({ type: 'removed', text: oldLines[i] });
+                    i += 1;
+                } else {
+                    out.push({ type: 'added', text: newLines[j] });
+                    j += 1;
+                }
+            }
+            while (i < m) {
+                out.push({ type: 'removed', text: oldLines[i] });
+                i += 1;
+            }
+            while (j < n) {
+                out.push({ type: 'added', text: newLines[j] });
+                j += 1;
+            }
+            return out;
+        }
+
+        function buildLineDiffFast(oldLines, newLines) {
+            const out = [];
+            let i = 0;
+            let j = 0;
+            while (i < oldLines.length && j < newLines.length) {
+                if (oldLines[i] === newLines[j]) {
+                    out.push({ type: 'context', text: oldLines[i] });
+                    i += 1;
+                    j += 1;
+                    continue;
+                }
+                if (i + 1 < oldLines.length && oldLines[i + 1] === newLines[j]) {
+                    out.push({ type: 'removed', text: oldLines[i] });
+                    i += 1;
+                    continue;
+                }
+                if (j + 1 < newLines.length && oldLines[i] === newLines[j + 1]) {
+                    out.push({ type: 'added', text: newLines[j] });
+                    j += 1;
+                    continue;
+                }
+                out.push({ type: 'removed', text: oldLines[i] });
+                out.push({ type: 'added', text: newLines[j] });
+                i += 1;
+                j += 1;
+            }
+            while (i < oldLines.length) {
+                out.push({ type: 'removed', text: oldLines[i] });
+                i += 1;
+            }
+            while (j < newLines.length) {
+                out.push({ type: 'added', text: newLines[j] });
+                j += 1;
+            }
+            return out;
+        }
+
+        function buildLineDiff(oldText, newText) {
+            const oldLines = String(oldText || '').split('\n');
+            const newLines = String(newText || '').split('\n');
+            const complexity = oldLines.length * newLines.length;
+            if (complexity <= 250000) {
+                return buildLineDiffLcs(oldLines, newLines);
+            }
+            return buildLineDiffFast(oldLines, newLines);
+        }
+
+        function renderJsonDiff(savedName, diffLines) {
+            const panel = document.getElementById('jsonDiffPanel');
+            const header = document.getElementById('jsonDiffHeader');
+            const body = document.getElementById('jsonDiffBody');
+            if (!panel || !header || !body) return;
+
+            const added = diffLines.filter(line => line.type === 'added').length;
+            const removed = diffLines.filter(line => line.type === 'removed').length;
+            const total = diffLines.length;
+            const capped = diffLines.slice(0, 1200);
+            const truncated = total > capped.length;
+
+            header.textContent = `Diff vs saved "${savedName}" · +${added} / -${removed}${truncated ? ' · truncated' : ''}`;
+            body.innerHTML = capped.map(line => {
+                const marker = line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' ';
+                return `<div class="diff-line ${line.type}"><span class="diff-marker">${marker}</span><span>${escapeHtml(line.text)}</span></div>`;
+            }).join('') || '<div class="diff-line context"><span class="diff-marker"> </span><span>No differences.</span></div>';
+            panel.hidden = false;
+        }
+
+        function formatJsonEditor() {
+            const area = document.getElementById('jsonArea');
+            if (!area) return;
+            const parsed = parseJsonWithDiagnostics(area.value);
+            if (!parsed.ok) {
+                const { line, column } = parsed.location || {};
+                setJsonLintResult({
+                    isValid: false,
+                    message: `Invalid JSON${line ? ` at line ${line}, column ${column}` : ''}: ${parsed.error.message}`,
+                });
+                showApiError(
+                    {
+                        code: 'INVALID_JSON',
+                        message: 'Cannot format invalid JSON.',
+                        details: parsed.error.message,
+                        hint: line ? `Fix syntax near line ${line}, column ${column}.` : 'Fix JSON syntax and try again.',
+                    },
+                    'Cannot format invalid JSON.',
+                );
+                return;
+            }
+
+            area.value = JSON.stringify(parsed.value, null, 2);
+            setJsonLintResult({ isValid: true, message: 'JSON is valid and formatted.' });
+            showStatus('JSON formatted.', 'done');
+            markDirty();
+        }
+
+        function lintJsonEditor() {
+            const area = document.getElementById('jsonArea');
+            if (!area) return;
+            const parsed = parseJsonWithDiagnostics(area.value);
+            if (parsed.ok) {
+                setJsonLintResult({ isValid: true, message: 'JSON is valid.' });
+                showStatus('JSON lint passed.', 'done');
+                return;
+            }
+            const { line, column } = parsed.location || {};
+            const message = `Invalid JSON${line ? ` at line ${line}, column ${column}` : ''}: ${parsed.error.message}`;
+            setJsonLintResult({ isValid: false, message });
+            showStatus('JSON lint failed.', 'error');
+        }
+
+        async function diffJsonVsSaved() {
+            const name = document.getElementById('scriptName').value.trim();
+            if (!name) {
+                showApiError(
+                    {
+                        code: 'SCRIPT_NAME_REQUIRED',
+                        message: 'Script name is required for diff.',
+                        hint: 'Enter script name, save/load it, then run diff.',
+                    },
+                    'Script name is required for diff.',
+                );
+                return;
+            }
+
+            const area = document.getElementById('jsonArea');
+            if (!area) return;
+            const currentRaw = area.value;
+            const parsedCurrent = parseJsonWithDiagnostics(currentRaw);
+            const currentText = parsedCurrent.ok ? JSON.stringify(parsedCurrent.value, null, 2) : currentRaw;
+
+            if (!parsedCurrent.ok) {
+                const { line, column } = parsedCurrent.location || {};
+                setJsonLintResult({
+                    isValid: false,
+                    message: `Current editor JSON invalid${line ? ` at line ${line}, column ${column}` : ''}. Diff uses raw text.`,
+                });
+            }
+
+            try {
+                const savedData = await fetchApi(
+                    `/api/scripts/${encodeURIComponent(name)}`,
+                    {},
+                    'Failed to load saved script for diff.',
+                );
+                const savedText = JSON.stringify(savedData, null, 2);
+                const diffLines = buildLineDiff(savedText, currentText);
+                renderJsonDiff(name, diffLines);
+                showStatus('Diff generated.', 'done');
+            } catch (err) {
+                showApiError(err, 'Failed to load saved script for diff.');
+            }
+        }
+
+        function sanitizeToken(value) {
+            const safe = String(value || '')
+                .trim()
+                .replace(/[^a-zA-Z0-9_-]+/g, '_')
+                .replace(/^_+|_+$/g, '');
+            return safe || 'untitled';
+        }
+
+        function buildCompareOutputName(baseScriptName, preset, compareGroup) {
+            const base = sanitizeToken(baseScriptName);
+            const safePreset = sanitizeToken(preset).toLowerCase();
+            return `${base}__cmp-${compareGroup}__${safePreset}`;
+        }
+
+        function formatBytes(bytes) {
+            const size = Number(bytes);
+            if (!Number.isFinite(size) || size < 0) return '-';
+            if (size < 1024) return `${size} B`;
+            if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+            if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+            return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+        }
+
+        function formatTimestamp(isoText, createdTs = null) {
+            let dateObj = null;
+            if (isoText) {
+                const parsed = new Date(isoText);
+                if (!Number.isNaN(parsed.getTime())) dateObj = parsed;
+            }
+            if (!dateObj && Number.isFinite(Number(createdTs)) && Number(createdTs) > 0) {
+                dateObj = new Date(Number(createdTs) * 1000);
+            }
+            if (!dateObj) return '-';
+            return dateObj.toLocaleString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        }
+
+        function normalizeOutputItem(raw) {
+            if (typeof raw === 'string') {
+                const filename = raw;
+                const url = `/output/${encodeURIComponent(filename)}`;
+                return {
+                    file: filename,
+                    sizeBytes: null,
+                    createdAt: null,
+                    createdTs: null,
+                    url,
+                    downloadUrl: url,
+                };
+            }
+            if (!raw || typeof raw !== 'object') return null;
+
+            const filename = raw.filename || raw.name || '';
+            if (!filename) return null;
+            const encodedUrl = `/output/${encodeURIComponent(filename)}`;
+            return {
+                file: filename,
+                sizeBytes: Number.isFinite(Number(raw.size_bytes)) ? Number(raw.size_bytes) : null,
+                createdAt: raw.created_at || null,
+                createdTs: Number.isFinite(Number(raw.created_ts)) ? Number(raw.created_ts) : null,
+                url: raw.url || encodedUrl,
+                downloadUrl: raw.download_url || encodedUrl,
+            };
+        }
+
+        function parseOutputMetadata(filename) {
+            const stem = String(filename || '').replace(/\.mp4$/i, '');
+            const match = stem.match(/^(.*)__cmp-(\d{6,})__([a-z0-9_-]+)$/i);
+            if (!match) {
+                return { filename, isCompare: false, baseName: stem, compareGroup: null, preset: null };
+            }
+            return {
+                filename,
+                isCompare: true,
+                baseName: match[1],
+                compareGroup: match[2],
+                preset: match[3].toLowerCase(),
+            };
+        }
+
+        function renderCompareGroup(outputsWithMeta) {
+            const panel = document.getElementById('compareGroupPanel');
+            const title = document.getElementById('compareGroupTitle');
+            const list = document.getElementById('compareGroupList');
+            if (!panel || !title || !list) return;
+
+            const groups = new Map();
+            for (const item of outputsWithMeta) {
+                if (!item.meta.isCompare || !item.meta.compareGroup) continue;
+                const key = item.meta.compareGroup;
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(item);
+            }
+
+            if (!groups.size) {
+                panel.hidden = true;
+                title.textContent = '';
+                list.innerHTML = '';
+                return;
+            }
+
+            const latestGroup = [...groups.keys()]
+                .sort((a, b) => Number(b) - Number(a))[0];
+            const latestItems = groups.get(latestGroup) || [];
+            const presetRank = (preset) => {
+                const idx = COMPARE_PRESET_ORDER.indexOf(preset);
+                return idx === -1 ? 999 : idx;
+            };
+            latestItems.sort((a, b) => presetRank(a.meta.preset) - presetRank(b.meta.preset));
+
+            title.textContent = `Latest Compare Group ${latestGroup}`;
+            list.innerHTML = latestItems.map(item => `
+                <div class="compare-group-item">
+                    <div>
+                        <strong>${escapeHtml(item.meta.preset || 'preset')}</strong>
+                        <span class="output-meta">
+                            <span class="output-badge group">cmp ${escapeHtml(item.meta.compareGroup || '')}</span>
+                        </span>
+                    </div>
+                    <button class="btn-secondary btn-small" onclick="previewVideoByEncoded('${encodeURIComponent(item.file)}')">Preview</button>
+                </div>
+            `).join('');
+            panel.hidden = false;
+        }
+
+        function renderOutputList(files) {
+            latestOutputItems = Array.isArray(files) ? files : [];
+            const showThumbnails = Boolean(document.getElementById('showOutputThumbnails')?.checked);
+            const outputsWithMeta = latestOutputItems
+                .map(normalizeOutputItem)
+                .filter(Boolean)
+                .map(item => ({
+                    ...item,
+                    meta: parseOutputMetadata(item.file),
+                }));
+
+            outputsWithMeta.sort((a, b) => {
+                const aTs = Number(a.createdTs || 0);
+                const bTs = Number(b.createdTs || 0);
+                if (aTs !== bTs) return bTs - aTs;
+                return b.file.localeCompare(a.file);
+            });
+
+            renderCompareGroup(outputsWithMeta);
+
+            document.getElementById('outputList').innerHTML = outputsWithMeta.map(item => {
+                const badges = [];
+                if (item.meta.preset) badges.push(`<span class="output-badge preset">${escapeHtml(item.meta.preset)}</span>`);
+                if (item.meta.compareGroup) badges.push(`<span class="output-badge group">cmp ${escapeHtml(item.meta.compareGroup)}</span>`);
+                const sizeText = formatBytes(item.sizeBytes);
+                const createdText = formatTimestamp(item.createdAt, item.createdTs);
+                const encodedFile = encodeURIComponent(item.file);
+                return `
+                    <div class="output-item">
+                        <div class="output-main">
+                            <div class="output-title">
+                                <a href="${item.url}" target="_blank" rel="noopener">${escapeHtml(item.file)}</a>
+                                <span class="output-meta">${badges.join('')}</span>
+                            </div>
+                            <p class="output-meta-line">Size: ${escapeHtml(sizeText)} · Created: ${escapeHtml(createdText)}</p>
+                            ${showThumbnails ? `<video class="output-thumb" src="${item.url}#t=0.1" preload="metadata" muted></video>` : ''}
+                        </div>
+                        <div class="output-actions">
+                            <a class="btn-link" href="${item.url}" target="_blank" rel="noopener">Open</a>
+                            <a class="btn-link" href="${item.downloadUrl}" download="${escapeHtml(item.file)}">Download</a>
+                            <button class="btn-secondary btn-small" onclick="previewVideoByEncoded('${encodedFile}')">Preview</button>
+                            <button class="btn-danger btn-small" onclick="deleteOutputByEncoded('${encodedFile}')">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('') || '<p class="output-empty">No videos yet</p>';
+        }
+
+        function getGenerateContext() {
+            const name = document.getElementById('scriptName').value.trim();
+            if (!name) {
+                alert('Enter a script name');
+                return null;
+            }
+            if (!blocks.length) {
+                alert('Add at least one block');
+                return null;
+            }
+            const validation = validateForm();
+            if (!validation.valid) {
+                showStatus('Fix validation errors before generating.', 'error');
+                focusValidationError(0);
+                return null;
+            }
+            return { name, script: getScript() };
+        }
+
+        async function startGenerationRequest(scriptName, script, outputName, meta = null, saveScript = true) {
+            const payload = {
+                script_name: scriptName,
+                output_name: outputName || scriptName,
+                script,
+                save_script: saveScript,
+            };
+            if (meta && typeof meta === 'object') payload.meta = meta;
+
+            const data = await fetchApi(
+                '/api/generate',
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                },
+                'Failed to start generation.',
+            );
+            if (!data || !data.job_id) {
+                throw normalizeApiError(
+                    {
+                        code: 'INVALID_JOB_RESPONSE',
+                        message: 'Invalid generate response from server.',
+                        hint: 'Retry generation. If this continues, restart the backend.',
+                    },
+                    'Failed to start generation.',
+                );
+            }
+            return data.job_id;
+        }
+
+        async function quickRenderPreset(preset) {
+            const context = getGenerateContext();
+            if (!context) return;
+            if (!SUBTITLE_PRESETS.includes(preset)) {
+                showApiError(
+                    {
+                        code: 'PRESET_NOT_FOUND',
+                        message: `Subtitle preset "${preset}" is not available.`,
+                        hint: 'Choose an available preset from the dropdown.',
+                    },
+                    'Preset is not available.',
+                );
+                return;
+            }
+
+            const compareGroup = String(Date.now());
+            const compareScript = { ...context.script, subtitle_preset: preset };
+            const outputName = buildCompareOutputName(context.name, preset, compareGroup);
+            showStatus(`Rendering ${preset} preset...`, 'processing');
+            renderJobTimeline({
+                status: 'loading',
+                stage: 'loading',
+                progress: `Preparing ${preset} preset...`,
+                current_block: 0,
+                total_blocks: blocks.length,
+            });
+
+            try {
+                const jobId = await startGenerationRequest(
+                    context.name,
+                    compareScript,
+                    outputName,
+                    { compare_group: compareGroup, preset },
+                    false,
+                );
+                await pollJob(jobId, { previewOnDone: true });
+                showStatus(`Rendered ${preset} preset.`, 'done');
+            } catch (err) {
+                showApiError(err, `Failed to render ${preset} preset.`);
+            }
+        }
+
+        async function renderPresetComparison() {
+            const context = getGenerateContext();
+            if (!context) return;
+
+            const presets = COMPARE_PRESET_ORDER.filter(preset => SUBTITLE_PRESETS.includes(preset));
+            if (!presets.length) {
+                showApiError(
+                    {
+                        code: 'NO_COMPARE_PRESETS',
+                        message: 'No compare presets are available.',
+                        hint: 'Add subtitle presets in the profile, then retry.',
+                    },
+                    'No compare presets available.',
+                );
+                return;
+            }
+
+            const compareGroup = String(Date.now());
+            showStatus(`Starting compare group ${compareGroup}...`, 'processing');
+
+            for (const preset of presets) {
+                const compareScript = { ...context.script, subtitle_preset: preset };
+                const outputName = buildCompareOutputName(context.name, preset, compareGroup);
+                showStatus(`Rendering ${preset} preset...`, 'processing');
+                renderJobTimeline({
+                    status: 'loading',
+                    stage: 'loading',
+                    progress: `Preparing ${preset} preset...`,
+                    current_block: 0,
+                    total_blocks: blocks.length,
+                });
+                try {
+                    const jobId = await startGenerationRequest(
+                        context.name,
+                        compareScript,
+                        outputName,
+                        { compare_group: compareGroup, preset },
+                        false,
+                    );
+                    await pollJob(jobId, { previewOnDone: false });
+                } catch (err) {
+                    showApiError(err, `Failed to render ${preset} preset.`);
+                    return;
+                }
+            }
+
+            showStatus(`Compare group ${compareGroup} complete.`, 'done');
+            await loadOutputs();
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+        }
+
+        function voiceOptions(selected) {
+            return VOICES.map(v =>
+                `<option value="${v.id}" ${v.id === selected ? 'selected' : ''}>${v.label}</option>`
+            ).join('');
+        }
+
+        function presetOptions(selected, includeInherit = false) {
+            const opts = [];
+            if (includeInherit) {
+                opts.push(`<option value="" ${!selected ? 'selected' : ''}>(Use Script Default)</option>`);
+            }
+            opts.push(...SUBTITLE_PRESETS.map(name =>
+                `<option value="${name}" ${name === selected ? 'selected' : ''}>${name}</option>`
+            ));
+            return opts.join('');
+        }
+
+        function modeOptions(selected) {
+            const modes = [
+                { value: '', label: '(Use Preset Default)' },
+                { value: 'standard', label: 'standard' },
+                { value: 'progressive', label: 'progressive' },
+            ];
+            return modes.map(m =>
+                `<option value="${m.value}" ${m.value === (selected || '') ? 'selected' : ''}>${m.label}</option>`
+            ).join('');
+        }
+
+        function blockSummaryText(block, index) {
+            const chars = (block.text || '').trim().length;
+            if (!chars) return `Block ${index + 1}`;
+            return `Block ${index + 1} · ${chars} chars`;
+        }
+
+        function renderScriptList(activeName = activeScriptName) {
+            const list = document.getElementById('scriptList');
+            if (!list) return;
+
+            const query = (document.getElementById('scriptSearch')?.value || '').trim().toLowerCase();
+            const filtered = scriptNames.filter(name => name.toLowerCase().includes(query));
+
+            if (!filtered.length) {
+                list.innerHTML = '<p class="output-empty">No matching scripts</p>';
+                return;
+            }
+
+            list.innerHTML = filtered.map(name => {
+                const active = name === activeName ? 'active' : '';
+                const encoded = encodeURIComponent(name);
+                const selected = name === activeName ? 'true' : 'false';
+                return `<button type="button" class="script-chip ${active}" role="option" aria-selected="${selected}" onclick="loadScriptByEncoded('${encoded}')">${escapeHtml(name)}</button>`;
+            }).join('');
+        }
+
+        function loadScriptByEncoded(encodedName) {
+            loadScript(decodeURIComponent(encodedName));
+        }
+
+        async function loadScriptList(activeName = activeScriptName) {
+            try {
+                const data = await fetchApi('/api/scripts', {}, 'Failed to load script list.');
+                scriptNames = Array.isArray(data) ? data : [];
+            } catch (err) {
+                showApiError(err, 'Failed to load script list.');
+            }
+            renderScriptList(activeName);
+        }
+
+        function updateSelectedHint() {
+            const hint = document.getElementById('selectedBlockHint');
+            if (!hint) return;
+            if (selectedBlockIndex == null || !blocks[selectedBlockIndex]) {
+                hint.textContent = 'No block selected. Click a block to enable shortcut actions.';
+                return;
+            }
+            hint.textContent = `Selected: Block ${selectedBlockIndex + 1}. Shortcut: Ctrl/Cmd+Shift+D to duplicate.`;
+        }
+
+        function refreshBlockSelection() {
+            const container = document.getElementById('blocksContainer');
+            if (!container) return;
+            container.querySelectorAll('.block').forEach((el, idx) => {
+                el.classList.toggle('is-selected', idx === selectedBlockIndex);
+            });
+            updateSelectedHint();
+        }
+
+        function renderBlocks() {
+            const container = document.getElementById('blocksContainer');
+            container.innerHTML = blocks.map((b, i) => `
+                <div class="block ${i === selectedBlockIndex ? 'is-selected' : ''}" data-index="${i}" draggable="true"
+                    tabindex="0"
+                    onkeydown="onBlockKeydown(event, ${i})"
+                    onclick="selectBlock(${i}, event)"
+                    ondragstart="onBlockDragStart(event, ${i})"
+                    ondragover="onBlockDragOver(event, ${i})"
+                    ondragleave="onBlockDragLeave(event)"
+                    ondrop="onBlockDrop(event, ${i})"
+                    ondragend="onBlockDragEnd(event)">
+                    <button type="button" class="btn-danger btn-small" aria-label="Delete block ${i + 1}" onclick="event.stopPropagation(); removeBlock(${i})">X</button>
+                    <div class="block-header">
+                        <span class="block-num">${blockSummaryText(b, i)}</span>
+                        <div class="block-header-tools">
+                            <button type="button" class="btn-ghost btn-small" title="${b.__collapsed ? 'Expand block' : 'Collapse block'}" aria-label="${b.__collapsed ? 'Expand block' : 'Collapse block'}"
+                                onclick="event.stopPropagation(); toggleBlockCollapse(${i})">${b.__collapsed ? '▸' : '▾'}</button>
+                            <button type="button" class="btn-ghost btn-small" title="Move up" aria-label="Move block ${i + 1} up"
+                                onclick="event.stopPropagation(); moveBlock(${i}, -1)">↑</button>
+                            <button type="button" class="btn-ghost btn-small" title="Move down" aria-label="Move block ${i + 1} down"
+                                onclick="event.stopPropagation(); moveBlock(${i}, 1)">↓</button>
+                            <button type="button" class="btn-ghost btn-small" title="Duplicate block" aria-label="Duplicate block ${i + 1}"
+                                onclick="event.stopPropagation(); duplicateBlock(${i})">⧉</button>
+                            <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+                        </div>
+                    </div>
+
+                    <div class="block-body ${b.__collapsed ? 'is-hidden' : ''}">
+                        <section class="block-section">
+                            <h3 class="block-section-title">Content</h3>
+                            <label for="block-${i}-text">Text</label>
+                            <textarea id="block-${i}-text" oninput="updateBlockField(${i}, 'text', this.value)">${escapeHtml(b.text || '')}</textarea>
+                        </section>
+
+                        <section class="block-section">
+                            <h3 class="block-section-title">Voice</h3>
+                            <label for="block-${i}-voice">Voice</label>
+                            <select id="block-${i}-voice" onchange="updateBlockField(${i}, 'voice', this.value)">${voiceOptions(b.voice)}</select>
+
+                            <details class="advanced-panel">
+                                <summary>Advanced Voice Controls</summary>
+                                <div class="advanced-body">
+                                    <p class="hint-text">Format: rate <code>+10%</code> / <code>-5%</code>, pitch <code>+8Hz</code> / <code>-3Hz</code>, volume <code>+6%</code> / <code>-4%</code>.</p>
+                                    <div class="block-row-3">
+                                        <div>
+                                            <label for="block-${i}-voice-rate">Voice Rate (optional)</label>
+                                            <input type="text" id="block-${i}-voice-rate" value="${escapeHtml(b.voice_rate || '')}" placeholder="+10% / -5%" oninput="updateBlockField(${i}, 'voice_rate', this.value, true)">
+                                        </div>
+                                        <div>
+                                            <label for="block-${i}-voice-pitch">Voice Pitch (optional)</label>
+                                            <input type="text" id="block-${i}-voice-pitch" value="${escapeHtml(b.voice_pitch || '')}" placeholder="+8Hz / -3Hz" oninput="updateBlockField(${i}, 'voice_pitch', this.value, true)">
+                                        </div>
+                                        <div>
+                                            <label for="block-${i}-voice-volume">Voice Volume (optional)</label>
+                                            <input type="text" id="block-${i}-voice-volume" value="${escapeHtml(b.voice_volume || '')}" placeholder="+6% / -4%" oninput="updateBlockField(${i}, 'voice_volume', this.value, true)">
+                                        </div>
+                                    </div>
+                                </div>
+                            </details>
+                        </section>
+
+                        <section class="block-section">
+                            <h3 class="block-section-title">Subtitle</h3>
+                            <label for="block-${i}-subtitle-preset">Subtitle Preset (optional)</label>
+                            <select id="block-${i}-subtitle-preset" onchange="updateBlockField(${i}, 'subtitle_preset', this.value, true)">${presetOptions(b.subtitle_preset, true)}</select>
+                            <p class="hint-text">Preset controls default subtitle behavior for this block. Leave empty to use script defaults.</p>
+
+                            <details class="advanced-panel">
+                                <summary>Advanced Subtitle Controls</summary>
+                                <div class="advanced-body">
+                                    <p class="hint-text">Use <code>subtitle mode</code> only when overriding the preset behavior for this block.</p>
+                                    <div class="block-row">
+                                        <div>
+                                            <label for="block-${i}-subtitle-mode">Subtitle Mode (optional)</label>
+                                            <select id="block-${i}-subtitle-mode" onchange="updateBlockField(${i}, 'subtitle_mode', this.value, true)">${modeOptions(b.subtitle_mode)}</select>
+                                        </div>
+                                        <div>
+                                            <label for="block-${i}-subtitle-style">Subtitle Style (optional)</label>
+                                            <input type="text" id="block-${i}-subtitle-style" value="${escapeHtml(b.subtitle_style || '')}" placeholder="Default / Highlight" oninput="updateBlockField(${i}, 'subtitle_style', this.value, true)">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label for="block-${i}-subtitle-keywords">Subtitle Keywords (comma-separated, optional)</label>
+                                        <input type="text" id="block-${i}-subtitle-keywords" value="${escapeHtml(b.subtitle_keywords || '')}" placeholder="money, online, tiet kiem" oninput="updateBlockField(${i}, 'subtitle_keywords', this.value)">
+                                    </div>
+                                </div>
+                            </details>
+                        </section>
+
+                        <section class="block-section">
+                            <h3 class="block-section-title">Assets</h3>
+                            <div class="block-row">
+                                <div>
+                                    <label for="block-${i}-background">Background (optional)</label>
+                                    <input type="text" id="block-${i}-background" value="${escapeHtml(b.background || '')}" placeholder="assets/images/backgrounds/bg.jpg" oninput="updateBlockField(${i}, 'background', this.value, true)">
+                                </div>
+                                <div>
+                                    <label for="block-${i}-image">Overlay Image (optional)</label>
+                                    <input type="text" id="block-${i}-image" value="${escapeHtml(b.image || '')}" placeholder="assets/images/overlays/pic.png" oninput="updateBlockField(${i}, 'image', this.value, true)">
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            `).join('');
+            refreshBlockSelection();
+            validateForm();
+        }
+
+        function selectBlock(index, event) {
+            if (event && event.target && event.target.closest('button, input, textarea, select, summary, a')) {
+                return;
+            }
+            selectedBlockIndex = index;
+            refreshBlockSelection();
+        }
+
+        function onBlockKeydown(event, index) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                selectedBlockIndex = index;
+                refreshBlockSelection();
+            }
+        }
+
+        function toggleBlockCollapse(index) {
+            blocks[index].__collapsed = !blocks[index].__collapsed;
+            renderBlocks();
+            markDirty();
+        }
+
+        function addBlock() {
+            const selectedVoice = document.getElementById('scriptDefaultVoice').value || (VOICES[0]?.id || 'NamMinh');
+            const insertAt = selectedBlockIndex == null ? blocks.length : selectedBlockIndex + 1;
+            blocks.splice(insertAt, 0, {
+                voice: selectedVoice,
+                text: '',
+                voice_rate: null,
+                voice_pitch: null,
+                voice_volume: null,
+                background: null,
+                image: null,
+                subtitle_preset: null,
+                subtitle_mode: null,
+                subtitle_style: null,
+                subtitle_keywords: '',
+                __collapsed: false,
+            });
+            selectedBlockIndex = insertAt;
+            renderBlocks();
+            markDirty();
+        }
+
+        function removeBlock(index) {
+            blocks.splice(index, 1);
+            if (!blocks.length) selectedBlockIndex = null;
+            else selectedBlockIndex = Math.max(0, Math.min(selectedBlockIndex ?? 0, blocks.length - 1));
+            renderBlocks();
+            markDirty();
+        }
+
+        function duplicateBlock(index) {
+            if (!blocks[index]) return;
+            const clone = JSON.parse(JSON.stringify(blocks[index]));
+            clone.__collapsed = false;
+            blocks.splice(index + 1, 0, clone);
+            selectedBlockIndex = index + 1;
+            renderBlocks();
+            markDirty();
+        }
+
+        function duplicateSelectedBlock() {
+            if (!blocks.length) return;
+            const index = selectedBlockIndex == null ? blocks.length - 1 : selectedBlockIndex;
+            duplicateBlock(index);
+        }
+
+        function moveBlock(index, direction) {
+            const target = index + direction;
+            if (target < 0 || target >= blocks.length) return;
+            const [item] = blocks.splice(index, 1);
+            blocks.splice(target, 0, item);
+            selectedBlockIndex = target;
+            renderBlocks();
+            markDirty();
+        }
+
+        function onBlockDragStart(event, index) {
+            dragSourceIndex = index;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', String(index));
+            event.currentTarget.classList.add('dragging');
+            selectedBlockIndex = index;
+            refreshBlockSelection();
+        }
+
+        function onBlockDragOver(event, index) {
+            event.preventDefault();
+            if (dragSourceIndex == null || dragSourceIndex === index) return;
+            event.currentTarget.classList.add('drag-over');
+        }
+
+        function onBlockDragLeave(event) {
+            event.currentTarget.classList.remove('drag-over');
+        }
+
+        function onBlockDrop(event, index) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('drag-over');
+            if (dragSourceIndex == null || dragSourceIndex === index) return;
+
+            const [moved] = blocks.splice(dragSourceIndex, 1);
+            const insertIndex = dragSourceIndex < index ? index - 1 : index;
+            blocks.splice(insertIndex, 0, moved);
+            selectedBlockIndex = insertIndex;
+            dragSourceIndex = null;
+            renderBlocks();
+            markDirty();
+        }
+
+        function onBlockDragEnd(event) {
+            dragSourceIndex = null;
+            event.currentTarget.classList.remove('dragging');
+            document.querySelectorAll('.block.drag-over').forEach(el => el.classList.remove('drag-over'));
+        }
+
+        function applyVoiceToAll() {
+            if (!blocks.length) return;
+            const voice = document.getElementById('scriptDefaultVoice').value || (VOICES[0]?.id || 'NamMinh');
+            blocks.forEach(block => { block.voice = voice; });
+            renderBlocks();
+            markDirty();
+            showStatus('Applied voice to all blocks.', 'done');
+        }
+
+        function applyVoiceControlsToAll() {
+            if (!blocks.length) return;
+            const voiceRate = emptyToNull(document.getElementById('scriptVoiceRate').value);
+            const voicePitch = emptyToNull(document.getElementById('scriptVoicePitch').value);
+            const voiceVolume = emptyToNull(document.getElementById('scriptVoiceVolume').value);
+
+            blocks.forEach(block => {
+                block.voice_rate = voiceRate;
+                block.voice_pitch = voicePitch;
+                block.voice_volume = voiceVolume;
+            });
+            renderBlocks();
+            markDirty();
+            showStatus('Applied voice controls to all blocks.', 'done');
+        }
+
+        function applySubtitlePresetToAll() {
+            if (!blocks.length) return;
+            const preset = emptyToNull(document.getElementById('scriptSubtitlePreset').value);
+            blocks.forEach(block => { block.subtitle_preset = preset; });
+            renderBlocks();
+            markDirty();
+            showStatus('Applied subtitle preset to all blocks.', 'done');
+        }
+
+        function getScript() {
+            const script = {
+                language: document.getElementById('scriptLang').value,
+                blocks: blocks.map(b => {
+                    const block = {
+                        voice: b.voice || (VOICES[0]?.id || 'NamMinh'),
+                        text: b.text || '',
+                    };
+                    if (b.background) block.background = b.background;
+                    if (b.image) block.image = b.image;
+                    if (b.voice_rate) block.voice_rate = b.voice_rate;
+                    if (b.voice_pitch) block.voice_pitch = b.voice_pitch;
+                    if (b.voice_volume) block.voice_volume = b.voice_volume;
+                    if (b.subtitle_preset) block.subtitle_preset = b.subtitle_preset;
+                    if (b.subtitle_mode) block.subtitle_mode = b.subtitle_mode;
+                    if (b.subtitle_style) block.subtitle_style = b.subtitle_style;
+
+                    const keywords = parseKeywordText(b.subtitle_keywords);
+                    if (keywords.length) block.subtitle_keywords = keywords;
+                    return block;
+                }),
+            };
+
+            const background = emptyToNull(document.getElementById('scriptBackground').value);
+            if (background) script.background = background;
+
+            const subtitlePreset = emptyToNull(document.getElementById('scriptSubtitlePreset').value);
+            if (subtitlePreset) script.subtitle_preset = subtitlePreset;
+
+            const voiceRate = emptyToNull(document.getElementById('scriptVoiceRate').value);
+            const voicePitch = emptyToNull(document.getElementById('scriptVoicePitch').value);
+            const voiceVolume = emptyToNull(document.getElementById('scriptVoiceVolume').value);
+            if (voiceRate) script.voice_rate = voiceRate;
+            if (voicePitch) script.voice_pitch = voicePitch;
+            if (voiceVolume) script.voice_volume = voiceVolume;
+
+            return script;
+        }
+
+        function parseScriptData(data, fromSavedScript = false) {
+            suppressDirtyTracking = true;
+            document.getElementById('scriptLang').value = data.language || 'vi-VN';
+            document.getElementById('scriptBackground').value = data.background || '';
+            const requestedPreset = data.subtitle_preset || DEFAULT_SUBTITLE_PRESET;
+            document.getElementById('scriptSubtitlePreset').value =
+                SUBTITLE_PRESETS.includes(requestedPreset) ? requestedPreset : DEFAULT_SUBTITLE_PRESET;
+            document.getElementById('scriptVoiceRate').value = data.voice_rate || '';
+            document.getElementById('scriptVoicePitch').value = data.voice_pitch || '';
+            document.getElementById('scriptVoiceVolume').value = data.voice_volume || '';
+
+            blocks = (data.blocks || []).map(b => ({
+                voice: b.voice || (VOICES[0]?.id || 'NamMinh'),
+                text: b.text || '',
+                voice_rate: b.voice_rate || null,
+                voice_pitch: b.voice_pitch || null,
+                voice_volume: b.voice_volume || null,
+                background: b.background || null,
+                image: b.image || null,
+                subtitle_preset: b.subtitle_preset || null,
+                subtitle_mode: b.subtitle_mode || null,
+                subtitle_style: b.subtitle_style || null,
+                subtitle_keywords: keywordTextFromArray(b.subtitle_keywords),
+                __collapsed: false,
+            }));
+
+            const firstVoice = blocks[0]?.voice || (VOICES[0]?.id || 'NamMinh');
+            document.getElementById('scriptDefaultVoice').value = firstVoice;
+            selectedBlockIndex = blocks.length ? 0 : null;
+            renderBlocks();
+            suppressDirtyTracking = false;
+            if (currentMode === 'json') {
+                const area = document.getElementById('jsonArea');
+                if (area) area.value = JSON.stringify(getScript(), null, 2);
+                clearJsonLintResult();
+                clearJsonDiffPanel();
+            }
+
+            if (fromSavedScript) markSaved();
+            else markDirty();
+        }
+
+        async function loadScript(name) {
+            activeScriptName = name;
+            document.getElementById('scriptName').value = name;
+            renderScriptList(name);
+
+            try {
+                const data = await fetchApi(
+                    `/api/scripts/${encodeURIComponent(name)}`,
+                    {},
+                    'Failed to load script.',
+                );
+                parseScriptData(data, true);
+            } catch (err) {
+                showApiError(err, 'Failed to load script.');
+            }
+        }
+
+        async function saveScript() {
+            const name = document.getElementById('scriptName').value.trim();
+            if (!name) return alert('Enter a script name');
+            const script = getScript();
+
+            try {
+                await fetchApi(
+                    `/api/scripts/${encodeURIComponent(name)}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(script),
+                    },
+                    'Failed to save script.',
+                );
+                activeScriptName = name;
+                showStatus('Script saved!', 'done');
+                markSaved();
+                await loadScriptList(name);
+            } catch (err) {
+                showApiError(err, 'Failed to save script.');
+            }
+        }
+
+        async function duplicateScript() {
+            const currentName = document.getElementById('scriptName').value.trim();
+            if (!currentName) return alert('Enter a script name first');
+            const suggested = `${currentName}_copy`;
+            const newName = prompt('Duplicate script as:', suggested);
+            if (!newName) return;
+
+            const script = getScript();
+            try {
+                await fetchApi(
+                    `/api/scripts/${encodeURIComponent(newName.trim())}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(script),
+                    },
+                    'Failed to duplicate script.',
+                );
+                activeScriptName = newName.trim();
+                document.getElementById('scriptName').value = activeScriptName;
+                showStatus(`Duplicated to ${activeScriptName}`, 'done');
+                markSaved();
+                await loadScriptList(activeScriptName);
+            } catch (err) {
+                showApiError(err, 'Failed to duplicate script.');
+            }
+        }
+
+        function exportScript() {
+            const name = document.getElementById('scriptName').value.trim() || 'script';
+            const scriptText = JSON.stringify(getScript(), null, 2);
+            const blob = new Blob([scriptText], { type: 'application/json;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${name}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            showStatus('Script exported.', 'done');
+        }
+
+        async function deleteCurrentScript() {
+            const name = document.getElementById('scriptName').value.trim();
+            if (!name) return alert('No script selected');
+            if (!confirm(`Delete script "${name}"?`)) return;
+
+            try {
+                await fetchApi(
+                    `/api/scripts/${encodeURIComponent(name)}`,
+                    { method: 'DELETE' },
+                    'Failed to delete script.',
+                );
+                activeScriptName = null;
+                document.getElementById('scriptName').value = '';
+                parseScriptData({ language: 'vi-VN', blocks: [] }, true);
+                await loadScriptList(null);
+                showStatus('Script deleted.', 'done');
+            } catch (err) {
+                showApiError(err, 'Failed to delete script.');
+            }
+        }
+
+        async function generate() {
+            const context = getGenerateContext();
+            if (!context) return;
+            showStatus('Starting...', 'processing');
+            renderJobTimeline({
+                status: 'loading',
+                stage: 'loading',
+                progress: 'Starting...',
+                current_block: 0,
+                total_blocks: blocks.length,
+            });
+
+            try {
+                const jobId = await startGenerationRequest(
+                    context.name,
+                    context.script,
+                    context.name,
+                    null,
+                    true,
+                );
+                activeScriptName = context.name;
+                markSaved();
+                await loadScriptList(context.name);
+                await pollJob(jobId, { previewOnDone: true });
+            } catch (err) {
+                showApiError(err, 'Failed to start generation.');
+            }
+        }
+
+        async function pollJob(jobId, options = {}) {
+            const previewOnDone = options.previewOnDone !== false;
+            return new Promise((resolve, reject) => {
+                const poll = async () => {
+                    try {
+                        const job = await fetchApi(
+                            `/api/jobs/${jobId}`,
+                            {},
+                            'Failed to fetch job status.',
+                        );
+                        renderJobTimeline(job);
+
+                        if (job.status === 'done') {
+                            showStatus(job.progress || 'Video generated!', 'done');
+                            loadOutputs();
+                            if (previewOnDone && job.output) previewVideo(job.output);
+                            resolve(job);
+                            return;
+                        }
+                        if (job.status === 'error') {
+                            const jobError = job.error || {
+                                code: 'GENERATION_FAILED',
+                                message: 'Video generation failed.',
+                            };
+                            const normalized = showApiError(jobError, 'Video generation failed.');
+                            reject(normalized);
+                            return;
+                        }
+
+                        showStatus(job.progress || 'Processing...', 'processing');
+                        setTimeout(poll, 1500);
+                    } catch (err) {
+                        const normalized = showApiError(err, 'Failed to fetch job status.');
+                        reject(normalized);
+                    }
+                };
+                poll();
+            });
+        }
+
+        function showStatus(msg, type) {
+            const bar = document.getElementById('statusBar');
+            bar.textContent = msg;
+            bar.className = `status-bar show status-${type}`;
+            if (type !== 'error') clearErrorPanel();
+        }
+
+        function previewVideo(filename) {
+            const video = document.getElementById('preview');
+            video.src = `/output/${encodeURIComponent(filename)}`;
+            video.load();
+        }
+
+        function previewVideoByEncoded(encodedFilename) {
+            previewVideo(decodeURIComponent(encodedFilename));
+        }
+
+        async function loadOutputs() {
+            try {
+                const files = await fetchApi('/api/outputs', {}, 'Failed to load output list.');
+                renderOutputList(files);
+            } catch (err) {
+                showApiError(err, 'Failed to load output list.');
+            }
+        }
+
+        async function deleteOutput(filename) {
+            if (!confirm('Delete ' + filename + '?')) return;
+            try {
+                await fetchApi(
+                    `/api/outputs/${encodeURIComponent(filename)}`,
+                    { method: 'DELETE' },
+                    'Failed to delete output file.',
+                );
+                loadOutputs();
+            } catch (err) {
+                showApiError(err, 'Failed to delete output file.');
+            }
+        }
+
+        async function deleteOutputByEncoded(encodedFilename) {
+            await deleteOutput(decodeURIComponent(encodedFilename));
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('visualEditor').style.display = mode === 'visual' ? 'block' : 'none';
+            document.getElementById('jsonEditor').style.display = mode === 'json' ? 'block' : 'none';
+            document.getElementById('btnVisual').classList.toggle('is-active', mode === 'visual');
+            document.getElementById('btnJson').classList.toggle('is-active', mode === 'json');
+            document.getElementById('btnVisual').setAttribute('aria-pressed', mode === 'visual' ? 'true' : 'false');
+            document.getElementById('btnJson').setAttribute('aria-pressed', mode === 'json' ? 'true' : 'false');
+
+            if (mode === 'json') {
+                document.getElementById('jsonArea').value = JSON.stringify(getScript(), null, 2);
+                clearJsonLintResult();
+                clearJsonDiffPanel();
+            }
+        }
+
+        function applyJson() {
+            const area = document.getElementById('jsonArea');
+            const parsed = parseJsonWithDiagnostics(area.value);
+            if (!parsed.ok) {
+                const { line, column } = parsed.location || {};
+                setJsonLintResult({
+                    isValid: false,
+                    message: `Invalid JSON${line ? ` at line ${line}, column ${column}` : ''}: ${parsed.error.message}`,
+                });
+                showApiError(
+                    {
+                        code: 'INVALID_JSON',
+                        message: 'Invalid JSON in editor.',
+                        details: parsed.error.message,
+                        hint: line ? `Fix syntax near line ${line}, column ${column}.` : 'Fix JSON syntax, then apply again.',
+                    },
+                    'Invalid JSON in editor.',
+                );
+                return;
+            }
+            try {
+                parseScriptData(parsed.value, false);
+                setJsonLintResult({ isValid: true, message: 'JSON is valid and applied.' });
+                clearJsonDiffPanel();
+                showStatus('JSON applied!', 'done');
+            } catch (e) {
+                showApiError(
+                    {
+                        code: 'INVALID_JSON',
+                        message: 'Invalid JSON in editor.',
+                        details: e.message,
+                        hint: 'Fix JSON syntax, then apply again.',
+                    },
+                    'Invalid JSON in editor.',
+                );
+            }
+        }
+
+        function importFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    parseScriptData(JSON.parse(e.target.result), false);
+                    const name = file.name.replace('.json', '');
+                    document.getElementById('scriptName').value = name;
+                    activeScriptName = null;
+                    renderScriptList(null);
+                    if (currentMode === 'json') {
+                        document.getElementById('jsonArea').value = JSON.stringify(getScript(), null, 2);
+                        clearJsonLintResult();
+                        clearJsonDiffPanel();
+                    }
+                    showStatus('Imported: ' + file.name, 'done');
+                } catch (err) {
+                    showApiError(
+                        {
+                            code: 'INVALID_JSON_FILE',
+                            message: 'Imported file is not valid JSON.',
+                            details: err.message,
+                            hint: 'Choose a valid JSON script export and retry.',
+                        },
+                        'Imported file is not valid JSON.',
+                    );
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function handleShortcuts(event) {
+            if (!(event.ctrlKey || event.metaKey)) return;
+            const key = event.key.toLowerCase();
+
+            if (key === 's') {
+                event.preventDefault();
+                saveScript();
+                return;
+            }
+
+            if (key === 'enter') {
+                event.preventDefault();
+                generate();
+                return;
+            }
+
+            if (!event.shiftKey) return;
+
+            if (key === 'b') {
+                event.preventDefault();
+                addBlock();
+                return;
+            }
+            if (key === 'd') {
+                event.preventDefault();
+                duplicateSelectedBlock();
+                return;
+            }
+            if (key === 'j') {
+                event.preventDefault();
+                setMode(currentMode === 'visual' ? 'json' : 'visual');
+            }
+        }
+
+        document.getElementById('scriptSubtitlePreset').innerHTML = presetOptions(DEFAULT_SUBTITLE_PRESET, false);
+        document.getElementById('scriptDefaultVoice').innerHTML = voiceOptions(VOICES[0]?.id || 'NamMinh');
+
+        document.addEventListener('input', (event) => {
+            if (event.target.matches('input, textarea, select')) {
+                markDirty();
+                scheduleValidation(120);
+                if (event.target.id === 'jsonArea') {
+                    clearJsonDiffPanel();
+                }
+            }
+        });
+        document.addEventListener('change', (event) => {
+            if (event.target.matches('input, textarea, select')) {
+                markDirty();
+                scheduleValidation(40);
+            }
+        });
+        document.addEventListener('keydown', handleShortcuts);
+
+        renderScriptList();
+        renderBlocks();
+        validateForm();
+        markSaved();
+        loadOutputs();
+    </script>
+</body>
+</html>

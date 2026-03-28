@@ -1,0 +1,14 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Be Vietnam Pro,72,&H00FFFFFF,&H0000D7FF,&H00000000,&H50000000,1,0,0,0,100,100,0.2,0,1,4.5,1.2,2,44,44,230,1
+Style: Highlight,Be Vietnam Pro,74,&H0048C8FF,&H0000D7FF,&H00000000,&H50000000,1,0,0,0,100,100,0.2,0,1,4.5,1.2,2,44,44,230,1
+Style: Karaoke,Be Vietnam Pro,72,&H00FFFFFF,&H0000D7FF,&H00000000,&H50000000,1,0,0,0,100,100,0.2,0,1,4.5,1.2,2,44,44,230,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
