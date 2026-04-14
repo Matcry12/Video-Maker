@@ -4,6 +4,24 @@ ffmpeg-python
 edge-tts
 flask
 soundfile
+groq
+google-genai
+
+# Whisper forced alignment
+faster-whisper
 
 # Utilities
 numpy
+rank-bm25
+
+# Dense embedding retrieval
+fastembed
+
+# Content sourcing
+ddgs
+crawl4ai
+
+# Image retrieval
+transformers
+torch
+Pillow

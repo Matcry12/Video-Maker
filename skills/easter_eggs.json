@@ -1,0 +1,18 @@
+{
+  "skill_id": "easter_eggs",
+  "name": "Easter Eggs & Hidden Details",
+  "description": "Hidden references, foreshadowing, and easter eggs that most people missed. Detective-like tone revealing what creators hid in plain sight for attentive viewers.",
+  "trigger_keywords": ["easter eggs", "hidden details", "hidden references", "foreshadowing", "you missed", "look closely", "details you missed", "secret details", "hidden meaning", "subtle"],
+  "content_types": ["easter_eggs", "lore"],
+  "moods": ["shocking", "dark_mystery"],
+  "structure": {
+    "hook_rule": "Open with the most MIND-BLOWING hidden detail: 'There is a detail in [topic] that 99 percent of people walked right past. And once you see it, you can not unsee it.'",
+    "pacing_rule": "Each detail should feel like a discovery. Use 'Look closely at...', 'If you pause at exactly...', 'Notice how...'. Start with easy-to-spot details, escalate to ones that require frame-by-frame analysis.",
+    "ending_rule": "End with a detail that RECONTEXTUALIZES everything: 'And this one detail changes the meaning of the entire [topic].' Loop back to suggest there are even more hidden details.",
+    "tone": "Excited detective who just cracked a case, sharing discoveries with fellow obsessives",
+    "transitions": ["Nhưng đó mới chỉ là khởi đầu...", "Và nếu bạn nhìn kỹ hơn...", "Nhưng chi tiết này mới thực sự gây sốc...", "Bạn đã bao giờ để ý..."]
+  },
+  "prompt_injection": "FORMAT: Easter egg reveal style. Every detail should feel like a discovery the viewer is making in real-time with you. Use phrases like 'If you look closely...', 'What most people miss is...', 'The creator actually hid...', 'Pause right here and notice...'. Build from cool details to GAME-CHANGING revelations. The viewer should want to immediately go back and rewatch or revisit the original.",
+  "example_hook_en": "There is a hidden detail in [topic] that changes everything. And almost nobody caught it.",
+  "example_hook_vi": "Có một chi tiết ẩn trong [topic] mà gần như không ai phát hiện. Và nó thay đổi tất cả."
+}

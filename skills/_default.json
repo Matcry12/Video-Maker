@@ -1,0 +1,18 @@
+{
+  "skill_id": "_default",
+  "name": "General",
+  "description": "General viral YouTube Shorts narration. Fast-paced, curiosity-driven storytelling with sharp hooks, escalating revelations, and seamless loop ending. Works for any topic.",
+  "trigger_keywords": ["video", "short", "viral", "narration", "general", "story"],
+  "content_types": [],
+  "moods": [],
+  "structure": {
+    "hook_rule": "Scan ALL facts. Find the MOST SHOCKING one (a death count, a dark secret, a betrayal, a mind-blowing number). Put it FIRST. The first sentence must make viewers think 'WHAT?! I need to know more.'",
+    "pacing_rule": "Alternate sentence length: short punch, then longer context, then short punch. Every 6 seconds of audio (roughly 15-20 words), there should be a new revelation or twist.",
+    "ending_rule": "The LAST sentence must grammatically and semantically CONNECT BACK to the FIRST sentence. Viewers who let the video replay will hear a continuous, coherent loop. The ending should feel like a cliffhanger that the hook answers.",
+    "tone": "Fast, curiosity-driven short-form narration with sharp pacing and spoken rhythm",
+    "transitions": ["Nhưng đó chưa phải tất cả...", "Điều thú vị hơn là...", "Nhưng chờ đã...", "Và đây là phần điên rồ nhất..."]
+  },
+  "prompt_injection": "Write as a viral short-form narrator. Every sentence must earn the viewer's attention. No filler, no generic documentary tone. Concrete details over broad framing.",
+  "example_hook_en": "This city was abandoned overnight. 350,000 people just... left.",
+  "example_hook_vi": "Subaru đã chết chính xác 27 lần. Và lần đau đớn nhất không phải do kẻ thù."
+}

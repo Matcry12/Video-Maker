@@ -1,0 +1,169 @@
+<div id="editorScreen" class="app-screen is-active">
+    <div class="workspace" id="workspace">
+        <aside class="panel panel-left" id="panelLeft">
+            <div class="panel-header">
+                <h2>Settings</h2>
+                <button class="btn-panel-toggle" onclick="togglePanel('left')" title="Toggle Settings">«</button>
+            </div>
+
+            <div class="panel-content">
+                <nav class="tabs-header">
+                    <button class="tab-btn is-active" onclick="setTab('load')">Load</button>
+                    <button class="tab-btn" onclick="setTab('project')">Project</button>
+                    <button class="tab-btn" onclick="setTab('subtitles')">Subs</button>
+                    <button class="tab-btn" onclick="setTab('voice')">Voice</button>
+                </nav>
+
+                <div id="tab-load" class="tab-content is-active">
+                    <section class="settings-group">
+                        <h3 class="group-title">Load</h3>
+                        <label for="scriptSearch">Search Scripts</label>
+                        <input type="text" id="scriptSearch" class="search-input" data-ignore-dirty="true" placeholder="Filter..." oninput="renderScriptList()">
+                        <label id="loadScriptLabel">Recent Scripts</label>
+                        <div class="script-list" id="scriptList" role="listbox" aria-labelledby="loadScriptLabel">
+                            {% for s in scripts %}
+                            <button type="button" class="script-chip" role="option" aria-selected="false" onclick="loadScriptByEncoded('{{ s | urlencode }}')">{{ s }}</button>
+                            {% endfor %}
+                        </div>
+                        <div class="output-list-footer">
+                            <button id="showAllScriptsBtn" class="btn-secondary btn-small" type="button" onclick="openScriptPicker()" hidden>Show All</button>
+                        </div>
+                        <div class="settings-actions">
+                            <button class="btn-small" onclick="duplicateScript()">Duplicate</button>
+                            <button class="btn-small" onclick="exportScript()">Export</button>
+                            <button class="btn-small btn-danger" onclick="deleteCurrentScript()">Delete</button>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="tab-project" class="tab-content">
+                    <section class="settings-group">
+                        <h3 class="group-title">Project</h3>
+                        <label for="scriptLang">Language</label>
+                        <select id="scriptLang">
+                            <option value="vi-VN">Vietnamese (vi-VN)</option>
+                            <option value="en-US">English (en-US)</option>
+                        </select>
+                    </section>
+                    <section class="settings-group">
+                        <h3 class="group-title">Background</h3>
+                        <label for="scriptBackground">Main Background (optional)</label>
+                        <input type="text" id="scriptBackground" placeholder="assets/videos/..." title="Video path">
+                    </section>
+                </div>
+
+                <div id="tab-subtitles" class="tab-content">
+                    <section class="settings-group">
+                        <h3 class="group-title">Subtitle Defaults</h3>
+                        <label for="scriptSubtitlePreset">Preset</label>
+                        <select id="scriptSubtitlePreset"></select>
+                        <label for="scriptSubtitleAlignmentMode">Alignment</label>
+                        <select id="scriptSubtitleAlignmentMode"></select>
+                        
+                        <div class="settings-actions">
+                            <button class="btn-small" onclick="applySubtitlePresetToAll()">Apply to All</button>
+                        </div>
+                        <div class="compare-actions mt-sm">
+                            <button class="btn-small" onclick="quickRenderPreset('minimal')">Minimal</button>
+                            <button class="btn-small" onclick="quickRenderPreset('energetic')">Energetic</button>
+                            <button class="btn-small" onclick="quickRenderPreset('cinematic')">Cinematic</button>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="tab-voice" class="tab-content">
+                    <section class="settings-group">
+                        <h3 class="group-title">Global Voice</h3>
+                        <label for="scriptDefaultVoice">Voice</label>
+                        <select id="scriptDefaultVoice"></select>
+
+                        <details class="advanced-panel mt-sm">
+                            <summary>Voice Controls</summary>
+                            <div class="advanced-body">
+                                <div class="block-row-3">
+                                    <div><label>Rate</label><input type="text" id="scriptVoiceRate" placeholder="+0%"></div>
+                                    <div><label>Pitch</label><input type="text" id="scriptVoicePitch" placeholder="+0Hz"></div>
+                                    <div><label>Vol</label><input type="text" id="scriptVoiceVolume" placeholder="+0%"></div>
+                                </div>
+                            </div>
+                        </details>
+                        <div class="settings-actions">
+                            <button class="btn-small" onclick="applyVoiceToAll()">Set Voice All</button>
+                            <button class="btn-small" onclick="applyVoiceControlsToAll()">Set Controls All</button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </aside>
+
+        <main class="panel panel-center">
+            <div class="editor-toolbar">
+                <div>
+                    <h2 id="workspaceTitle">Editor</h2>
+                </div>
+                <div class="mode-controls">
+                    <button class="btn-toggle btn-small is-active" id="btnVisual" onclick="setMode('visual')">Visual</button>
+                    <button class="btn-toggle btn-small" id="btnJson" onclick="setMode('json')">JSON</button>
+                    <label class="btn-secondary btn-small btn-import-label">
+                        Import
+                        <input type="file" accept=".json" onchange="importFile(event)">
+                    </label>
+                </div>
+            </div>
+
+            <div id="visualEditor" class="visual-editor">
+                <div class="block-actions-top">
+                    <button class="btn-secondary btn-small" onclick="addBlock()">+ Add Block</button>
+                </div>
+                <p id="selectedBlockHint" class="selected-hint">Click a block to select.</p>
+                <section id="validationPanel" class="validation-panel" hidden>
+                    <h3 class="validation-title">Issues</h3>
+                    <div id="validationList" class="validation-list"></div>
+                </section>
+                <div id="blocksContainer"></div>
+            </div>
+
+            <div id="jsonEditor" class="json-editor">
+                <textarea id="jsonArea" class="json-area"></textarea>
+                <div class="json-tools">
+                    <button class="btn-secondary btn-small" onclick="formatJsonEditor()">Format</button>
+                    <button class="btn-secondary btn-small" onclick="applyJson()">Apply</button>
+                </div>
+            </div>
+
+            <section id="jobTimeline" class="job-timeline" hidden>
+                <div id="timelineSteps" class="timeline-steps"></div>
+                <div id="blockProgress" class="block-progress" hidden>
+                    <div id="blockProgressLabel" class="block-progress-label"></div>
+                    <div class="block-progress-track"><div id="blockProgressFill" class="block-progress-fill"></div></div>
+                </div>
+            </section>
+            <div id="statusBar" class="status-bar" role="status"></div>
+            <section id="errorPanel" class="error-panel" hidden>
+                <h3 id="errorHeadline" class="error-headline"></h3>
+                <p id="errorHint" class="error-hint" hidden></p>
+            </section>
+        </main>
+
+        <section class="panel panel-right" id="panelRight">
+            <div class="panel-header">
+                <h2>Output</h2>
+                <button class="btn-panel-toggle" onclick="togglePanel('right')" title="Toggle Output">»</button>
+            </div>
+            
+            <div class="panel-content">
+                <section id="compareGroupPanel" class="compare-group-panel" hidden>
+                    <h3 id="compareGroupTitle" class="compare-group-title"></h3>
+                    <div id="compareGroupList" class="compare-group-list"></div>
+                </section>
+                <div id="outputList"></div>
+                <div class="output-list-footer">
+                    <button id="showAllOutputsBtn" class="btn-secondary btn-small" type="button" onclick="openOutputPicker()" hidden>Show All</button>
+                </div>
+
+                <h2 class="mt-lg">Preview</h2>
+                <video id="preview" controls></video>
+            </div>
+        </section>
+    </div>
+</div>

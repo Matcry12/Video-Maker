@@ -12,12 +12,14 @@
     "default_bgm_volume": 0.15
   },
   "tts": {
-    "default_rate": "+0%",
+    "default_rate": "+25%",
     "default_pitch": "+0Hz",
-    "default_volume": "+0%"
+    "default_volume": "+0%",
+    "parallel_workers": 3
   },
   "subtitle": {
     "default_preset": "minimal",
+    "default_alignment_mode": "corrected",
     "presets": {
       "minimal": {
         "style": "Default",

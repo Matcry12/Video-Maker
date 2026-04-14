@@ -1,0 +1,18 @@
+{
+  "skill_id": "comparison",
+  "name": "Comparison / VS Battle",
+  "description": "Side-by-side comparison or versus battle format. Compares two or more subjects across multiple dimensions with a dramatic winner reveal at the end.",
+  "trigger_keywords": ["vs", "versus", "comparison", "who wins", "battle", "fight", "better", "stronger", "which is", "who would win", "compared to"],
+  "content_types": ["comparison"],
+  "moods": ["epic", "funny"],
+  "structure": {
+    "hook_rule": "Open with the matchup and a provocative claim: '[A] vs [B]. Everyone thinks [A] wins, but the numbers tell a completely different story.' Create immediate tension.",
+    "pacing_rule": "Compare across 3-4 dimensions (stats, achievements, hidden abilities). Give each side a fair showing. Use 'In round one...', 'But here is where it flips...'. Save the DECISIVE factor for last.",
+    "ending_rule": "Reveal the winner with a twist nobody expected. Then add: 'But in one specific scenario, the loser actually dominates...' Loop back to challenge the opening claim.",
+    "tone": "Sports commentator calling a championship match, dramatic and energetic",
+    "transitions": ["Nhưng ở vòng tiếp theo...", "Và đây là lúc mọi thứ đảo ngược...", "Tưởng như đã rõ ràng, nhưng...", "Và yếu tố quyết định là..."]
+  },
+  "prompt_injection": "FORMAT: VS battle comparison. Set up both sides fairly, then create dramatic reveals as you compare them. Use concrete numbers and stats where possible. Build tension toward the final verdict. The winner reveal should feel earned, not arbitrary. End with a twist that keeps the debate alive. Never be boring or neutral — take a stance but show your work.",
+  "example_hook_en": "[A] vs [B]. Everyone picks [A]. But wait until you see the numbers.",
+  "example_hook_vi": "[A] vs [B]. Ai cũng chọn [A]. Nhưng hãy đợi đến khi bạn thấy con số."
+}

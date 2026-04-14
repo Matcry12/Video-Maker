@@ -1,0 +1,18 @@
+{
+  "skill_id": "did_you_know",
+  "name": "Did You Know?",
+  "description": "Curiosity-driven facts presented as surprising revelations. Each fact starts with a 'did you know' hook that makes viewers feel they are learning insider knowledge they never heard before.",
+  "trigger_keywords": ["did you know", "facts", "interesting facts", "surprising facts", "bet you didn't know", "things you didn't know", "mind blowing facts", "fun facts", "crazy facts"],
+  "content_types": ["lore", "easter_eggs"],
+  "moods": ["shocking", "funny"],
+  "structure": {
+    "hook_rule": "Start with the MOST surprising fact as a 'Did you know...?' question. Make it sound like insider knowledge that 99% of people missed.",
+    "pacing_rule": "Each fact should begin with a curiosity trigger: 'Did you know...', 'Here is something crazy...', 'Most people have no idea that...', 'What nobody tells you is...'. Alternate between short shocking statements and slightly longer explanations.",
+    "ending_rule": "End with the WILDEST fact and a callback question that loops back to the opening 'Did you know'. Example: '...and the craziest part? You probably walked past it without ever knowing.'",
+    "tone": "Excited, conspiratorial, like sharing secrets with a friend over coffee",
+    "transitions": ["Nhưng đây mới là điều điên rồ nhất...", "Và nếu bạn nghĩ đó đã sốc...", "Nhưng chờ đã, còn nữa...", "Bạn có biết điều gì thú vị hơn không?"]
+  },
+  "prompt_injection": "FORMAT: 'Did you know?' revelation style. Every fact should feel like a revelation the viewer was never supposed to find out. Use phrases like 'What most people do not realize is...', 'Here is something 99 percent of fans missed...', 'Nobody talks about this, but...'. Build from surprising to MIND-BLOWING. The viewer should feel smarter after watching. Never sound like a textbook or documentary.",
+  "example_hook_en": "Did you know that [shocking fact]? And that is not even the craziest part.",
+  "example_hook_vi": "Bạn có biết rằng [shocking fact]? Và đó thậm chí còn chưa phải điều điên rồ nhất."
+}

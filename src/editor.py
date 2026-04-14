@@ -15,12 +15,14 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 import soundfile as sf
 
 logger = logging.getLogger(__name__)
 
 STYLES_ASS = Path(__file__).parent.parent / "styles.ass"
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+POP_SFX = Path(__file__).parent.parent / "assets" / "audio" / "sound_effects" / "pop.mp3"
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
 VIDEO_EXTS = {".mp4", ".webm", ".mkv", ".mov", ".avi"}
 PUNCT_NO_SPACE_BEFORE = set(",.!?;:%)]}\"'")
 PUNCT_NO_SPACE_AFTER = set("([{")
@@ -29,6 +31,29 @@ BAD_LINE_START_WORDS = {
     "a", "an", "and", "của", "for", "in", "là", "mà", "of", "or",
     "ở", "the", "thì", "to", "và", "với", "về",
 }
+TOKEN_VARIANT_TABLE = str.maketrans(
+    {
+        "“": "\"",
+        "”": "\"",
+        "‘": "'",
+        "’": "'",
+        "–": "-",
+        "—": "-",
+        "…": "...",
+    }
+)
+MIN_EVENT_DURATION_SEC = 0.35
+
+# Pan direction presets for background image mode
+# (start_x_frac, start_y_frac, end_x_frac, end_y_frac) of max pan distance
+_BG_PAN_DIRS = [
+    (0.0, 0.0, 1.0, 1.0),     # top-left → bottom-right
+    (1.0, 0.0, 0.0, 1.0),     # top-right → bottom-left
+    (0.0, 1.0, 1.0, 0.0),     # bottom-left → top-right
+    (1.0, 1.0, 0.0, 0.0),     # bottom-right → top-left
+    (0.5, 0.0, 0.5, 1.0),     # top-center → bottom-center
+    (0.0, 0.5, 1.0, 0.5),     # left-center → right-center
+]
 
 
 def generate_ass(
@@ -44,6 +69,7 @@ def generate_ass(
     max_duration: float = 2.5,
     max_cps: float = 16.0,
     pause_break_sec: float = 0.35,
+    audio_duration: Optional[float] = None,
 ) -> Path:
     """
     Generate an .ass subtitle file from word timestamps.
@@ -68,6 +94,18 @@ def generate_ass(
         max_cps=max_cps,
         pause_break_sec=pause_break_sec,
     )
+
+    # Clamp last caption end time to audio duration if provided
+    if audio_duration is not None and audio_duration > 0 and captions:
+        last = captions[-1]
+        if last["end"] > audio_duration:
+            last["end"] = audio_duration
+        # Also ensure no caption exceeds audio duration
+        for cap in captions:
+            if cap["end"] > audio_duration:
+                cap["end"] = audio_duration
+            if cap["start"] >= audio_duration:
+                cap["start"] = max(0.0, audio_duration - 0.1)
 
     for caption in captions:
         caption_events = _caption_to_events(
@@ -121,6 +159,7 @@ def _build_captions(
             max_caption_chars=max_caption_chars,
             max_chars_per_line=max_chars_per_line,
             max_lines_per_caption=max_lines_per_caption,
+            min_duration=min_duration,
             max_duration=max_duration,
             max_cps=max_cps,
             pause_break_sec=pause_break_sec,
@@ -159,6 +198,7 @@ def _normalize_words(words: list) -> list[dict]:
     normalized = []
     for item in words:
         token = re.sub(r"\s+", " ", str(item.get("word", "") or "")).strip()
+        token = token.translate(TOKEN_VARIANT_TABLE)
         if not token:
             continue
 
@@ -170,8 +210,44 @@ def _normalize_words(words: list) -> list[dict]:
 
         start = max(0.0, start)
         end = max(start, end)
-        normalized.append({"word": token, "start": start, "end": end})
+
+        token_parts = _split_token_with_timing(token, start, end)
+        for part in token_parts:
+            if normalized:
+                prev = normalized[-1]
+                same_word = prev["word"] == part["word"]
+                same_start = abs(prev["start"] - part["start"]) < 0.001
+                same_end = abs(prev["end"] - part["end"]) < 0.001
+                if same_word and same_start and same_end:
+                    continue
+            normalized.append(part)
     return normalized
+
+
+def _split_token_with_timing(token: str, start: float, end: float) -> list[dict]:
+    """
+    Edge may occasionally emit multi-word chunks; split them so caption
+    segmentation never drops embedded words.
+    """
+    parts = [p for p in token.split(" ") if p]
+    if len(parts) <= 1:
+        return [{"word": token, "start": start, "end": end}]
+
+    total_span = max(end - start, 0.001)
+    weights = [max(len(re.sub(r"\W+", "", part)), 1) for part in parts]
+    total_weight = max(sum(weights), 1)
+
+    cursor = start
+    result = []
+    for idx, (part, weight) in enumerate(zip(parts, weights)):
+        if idx == len(parts) - 1:
+            part_end = end
+        else:
+            part_end = cursor + total_span * (weight / total_weight)
+        part_end = max(part_end, cursor)
+        result.append({"word": part, "start": cursor, "end": part_end})
+        cursor = part_end
+    return result
 
 
 def _normalize_keyword(keyword: str) -> str:
@@ -222,7 +298,7 @@ def _caption_to_progressive_events(
         else:
             end = caption["end"]
 
-        end = min(max(end, start + 0.08), caption["end"])
+        end = min(max(end, start + MIN_EVENT_DURATION_SEC), caption["end"])
         if end <= start:
             continue
 
@@ -278,6 +354,7 @@ def _should_break_before(
     max_caption_chars: int,
     max_chars_per_line: int,
     max_lines_per_caption: int,
+    min_duration: float,
     max_duration: float,
     max_cps: float,
     pause_break_sec: float,
@@ -302,7 +379,10 @@ def _should_break_before(
         return True
     if candidate_duration > max_duration:
         return True
-    if char_count / candidate_duration > max_cps:
+    # Edge word boundaries can be very short at token-level. Use a duration floor
+    # to avoid over-splitting into 1-word captions in standard mode.
+    effective_duration = max(candidate_duration, max(min_duration, MIN_EVENT_DURATION_SEC))
+    if len(candidate) >= 3 and (char_count / effective_duration > max_cps):
         return True
 
     wrapped = _wrap_caption_lines(
@@ -407,14 +487,15 @@ def _smooth_caption_gaps(captions: list[dict], min_gap: float, max_gap: float):
             continue
 
         if gap < min_gap:
-            target_end = max(current["start"] + 0.12, nxt["start"] - min_gap)
+            target_end = max(current["start"] + MIN_EVENT_DURATION_SEC, nxt["start"] - min_gap)
             current["end"] = min(current["end"], target_end)
 
-        current["end"] = max(current["end"], current["start"] + 0.12)
+        current["end"] = max(current["end"], current["start"] + MIN_EVENT_DURATION_SEC)
 
 
 def _ensure_min_caption_duration(captions: list[dict], min_duration: float, min_gap: float):
     """Extend too-short captions where possible to avoid flash-like timing."""
+    min_duration = max(min_duration, MIN_EVENT_DURATION_SEC)
     for idx, caption in enumerate(captions):
         desired_end = caption["start"] + min_duration
         if caption["end"] >= desired_end:
@@ -427,7 +508,7 @@ def _ensure_min_caption_duration(captions: list[dict], min_duration: float, min_
         next_start = captions[idx + 1]["start"]
         max_allowed_end = max(caption["end"], next_start - min_gap)
         caption["end"] = min(desired_end, max_allowed_end)
-        caption["end"] = max(caption["end"], caption["start"] + 0.12)
+        caption["end"] = max(caption["end"], caption["start"] + MIN_EVENT_DURATION_SEC)
 
 
 def _escape_ass_text(text: str) -> str:
@@ -482,92 +563,181 @@ def render_block_clip(
     overlay_image: Optional[Path] = None,
     background_offset_sec: float = 0.0,
     use_nvenc: bool = True,
+    overlay_images: Optional[list[dict]] = None,
+    image_mode: str = "popup",
 ) -> Path:
     """
     Render a single block clip.
 
     - Video background: loops to match audio duration
-      and starts at background_offset_sec for timeline continuity
     - Image background: Ken Burns zoom effect
-    - Optional overlay image: top-center with fade in/out
+    - Multi-image overlays with popup or background display modes
     - Burns ASS subtitles
+    - Pop sound pre-mixed into audio for popup mode
+
+    overlay_images: list of {"path": Path, "start_sec": float, "end_sec": float}
+                    Times are relative to block start (0-based).
+    image_mode: "popup" (floating overlay + pop sound) or "background" (full-screen pan)
     """
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Get audio duration for overlay fade timing
     audio_info = sf.info(str(audio_path))
     duration = audio_info.duration
+
+    # Collect valid overlays (prefer new multi-image param, fall back to legacy single)
+    valid_overlays = []
+    if overlay_images:
+        valid_overlays = [
+            ovr for ovr in overlay_images
+            if ovr.get("path") and Path(ovr["path"]).exists()
+        ][:_MAX_OVERLAYS]
+    elif overlay_image and overlay_image.exists():
+        valid_overlays = [{"path": overlay_image, "start_sec": 0.05, "end_sec": duration}]
+
+    # Pre-mix pop sounds into block audio (popup mode only)
+    actual_audio = audio_path
+    if image_mode == "popup" and POP_SFX.exists() and valid_overlays:
+        try:
+            pop_times = [float(ovr.get("start_sec", 0)) for ovr in valid_overlays]
+            actual_audio = _premix_pop_sounds(audio_path, pop_times)
+        except Exception as exc:
+            logger.warning("Pop sound pre-mix failed: %s. Using original audio.", exc)
 
     cmd = ["ffmpeg", "-y"]
     filters = []
     input_idx = 0
 
     # --- Input 0: Background ---
-    if _is_image(background_path):
-        # Image: use loop for Ken Burns
+    # Background mode with images: use solid black — video is NEVER visible
+    use_black_bg = (image_mode == "background" and valid_overlays)
+
+    if use_black_bg:
+        cmd += ["-f", "lavfi", "-i", f"color=c=black:s={width}x{height}:r={fps}:d={duration}"]
+    elif _is_image(background_path):
         cmd += ["-loop", "1", "-i", str(background_path)]
     else:
-        # Video: loop indefinitely, seek to cumulative timeline offset
         seek_sec = max(0.0, float(background_offset_sec))
         if seek_sec > 0.001:
             cmd += ["-ss", f"{seek_sec:.3f}"]
         cmd += ["-stream_loop", "-1", "-i", str(background_path)]
-    bg_idx = input_idx
     input_idx += 1
 
     # --- Input 1: Audio ---
-    cmd += ["-i", str(audio_path)]
+    cmd += ["-i", str(actual_audio)]
     audio_idx = input_idx
     input_idx += 1
 
-    # --- Input 2: Overlay image (optional) ---
-    ovr_idx = None
-    if overlay_image and overlay_image.exists():
-        cmd += ["-i", str(overlay_image)]
-        ovr_idx = input_idx
-        input_idx += 1
-
     # --- Background filter ---
-    if _is_image(background_path):
-        # Ken Burns: slow zoom in from center
+    if use_black_bg:
+        filters.append(f"[0:v]setsar=1[bg]")
+    elif _is_image(background_path):
         filters.append(
-            f"[{bg_idx}:v]scale=8000:-1,"
+            f"[0:v]scale=8000:-1,"
             f"zoompan=z='min(zoom+0.0005,1.3)'"
             f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
             f":d=1:s={width}x{height}:fps={fps},"
             f"setsar=1[bg]"
         )
     else:
-        # Video: scale and crop
         filters.append(
-            f"[{bg_idx}:v]scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,"
             f"crop={width}:{height},setsar=1,fps={fps}[bg]"
         )
 
-    # --- Subtitle burn-in ---
+    # --- Subtitle burn-in & Overlay images ---
+    # Background mode: overlay images FIRST (full-screen), then burn subtitles ON TOP
+    # Popup mode: burn subtitles first, then overlay images on top
     sub_path_escaped = str(subtitle_path).replace("\\", "/").replace(":", "\\:")
-    filters.append(f"[bg]ass='{sub_path_escaped}'[subbed]")
 
-    # --- Overlay image ---
-    if ovr_idx is not None:
-        # Scale overlay to ~30% width, preserve aspect ratio
-        ovr_width = int(width * 0.3)
-        fade_dur = 0.4
-        fade_in_start = 0.3
-        fade_out_start = max(duration - 0.7, fade_in_start + fade_dur)
+    if valid_overlays and image_mode == "background":
+        # Background mode: images on [bg] first, subtitles last
+        current_label = "bg"
 
-        filters.append(
-            f"[{ovr_idx}:v]scale={ovr_width}:-1,format=rgba,"
-            f"fade=t=in:st={fade_in_start}:d={fade_dur}:alpha=1,"
-            f"fade=t=out:st={fade_out_start:.2f}:d={fade_dur}:alpha=1[ovr]"
-        )
-        # Position: top-center with padding
-        filters.append(
-            f"[subbed][ovr]overlay=x=(W-w)/2:y=50:"
-            f"enable='between(t,{fade_in_start},{fade_out_start + fade_dur:.2f})'[vout]"
-        )
+        # Full screen, no gaps, hard cuts — Ken Burns pan effect
+        bg_scale_w = int(width * 1.15)
+        bg_scale_h = int(height * 1.15)
+        x_pan_max = bg_scale_w - width
+        y_pan_max = bg_scale_h - height
+
+        for oi, ovr in enumerate(valid_overlays):
+            start_sec = float(ovr.get("start_sec", 0))
+            end_sec = float(ovr.get("end_sec", start_sec + 4.0))
+            dur = max(end_sec - start_sec, 0.1)
+
+            cmd += ["-loop", "1", "-i", str(Path(ovr["path"]))]
+            ovr_input = input_idx
+            input_idx += 1
+
+            sx, sy, ex, ey = _BG_PAN_DIRS[oi % len(_BG_PAN_DIRS)]
+            sx_px = int(sx * x_pan_max)
+            sy_px = int(sy * y_pan_max)
+            ex_px = int(ex * x_pan_max)
+            ey_px = int(ey * y_pan_max)
+
+            ovr_label = f"ovr{oi}"
+            # Last overlay goes to "img_composed", then subtitles go on top
+            is_last_ovr = (oi == len(valid_overlays) - 1)
+            out_label = "img_composed" if is_last_ovr else f"v{oi}"
+
+            # No alpha fade — hard cut between images for seamless transitions
+            filters.append(
+                f"[{ovr_input}:v]scale={bg_scale_w}:{bg_scale_h}"
+                f":force_original_aspect_ratio=increase,"
+                f"crop={bg_scale_w}:{bg_scale_h},format=rgba[{ovr_label}]"
+            )
+
+            prog = f"min(max((t-{start_sec:.2f})/{dur:.2f},0),1)"
+            x_expr = f"-({sx_px}+({ex_px}-{sx_px})*{prog})"
+            y_expr = f"-({sy_px}+({ey_px}-{sy_px})*{prog})"
+
+            # enable covers exact time range — no gaps between consecutive images
+            filters.append(
+                f"[{current_label}][{ovr_label}]overlay="
+                f"x='{x_expr}':y='{y_expr}':"
+                f"enable='between(t,{start_sec:.2f},{end_sec:.2f})'[{out_label}]"
+            )
+            current_label = out_label
+
+        # Burn subtitles ON TOP of composed images so text is always visible
+        filters.append(f"[img_composed]ass='{sub_path_escaped}'[vout]")
+
+    elif valid_overlays:
+        # Popup mode: subtitles first, then floating image overlays on top
+        filters.append(f"[bg]ass='{sub_path_escaped}'[subbed]")
+        current_label = "subbed"
+
+        ovr_width = int(width * 0.68)
+        for oi, ovr in enumerate(valid_overlays):
+            start_sec = float(ovr.get("start_sec", 0))
+            end_sec = float(ovr.get("end_sec", start_sec + 3.0))
+
+            cmd += ["-loop", "1", "-i", str(Path(ovr["path"]))]
+            ovr_input = input_idx
+            input_idx += 1
+
+            fade_dur = 0.15
+            fade_in_start = start_sec + 0.05
+            fade_out_start = max(end_sec - 0.25, fade_in_start + fade_dur)
+            overlay_end = fade_out_start + fade_dur
+
+            ovr_label = f"ovr{oi}"
+            out_label = f"v{oi}" if oi < len(valid_overlays) - 1 else "vout"
+
+            filters.append(
+                f"[{ovr_input}:v]scale={ovr_width}:-1,format=rgba,"
+                f"fade=t=in:st={fade_in_start:.2f}:d={fade_dur}:alpha=1,"
+                f"fade=t=out:st={fade_out_start:.2f}:d={fade_dur}:alpha=1[{ovr_label}]"
+            )
+            float_y = f"(H-h)/2-40+6*sin((t-{start_sec:.2f})*1.5)"
+            filters.append(
+                f"[{current_label}][{ovr_label}]overlay="
+                f"x=(W-w)/2:y='{float_y}':"
+                f"enable='between(t,{fade_in_start:.2f},{overlay_end:.2f})'[{out_label}]"
+            )
+            current_label = out_label
     else:
-        filters.append("[subbed]copy[vout]")
+        # No overlays: just burn subtitles
+        filters.append(f"[bg]ass='{sub_path_escaped}'[vout]")
 
     # --- Build command ---
     filter_complex = ";\n".join(filters)
@@ -575,7 +745,6 @@ def render_block_clip(
     cmd += ["-map", "[vout]", "-map", f"{audio_idx}:a"]
     cmd += ["-shortest"]
 
-    # Encoding
     if use_nvenc:
         cmd += ["-c:v", "h264_nvenc", "-preset", "p4", "-b:v", "8M"]
     else:
@@ -584,9 +753,671 @@ def render_block_clip(
 
     cmd += [str(output_path)]
 
-    logger.info("Rendering block clip: %s", output_path.name)
+    logger.info("Rendering block clip (%s mode, %d overlays): %s",
+                image_mode, len(valid_overlays), output_path.name)
     _run_ffmpeg(cmd, "render_block_clip")
+
+    # Clean up pre-mixed audio
+    if actual_audio != audio_path and actual_audio.exists():
+        actual_audio.unlink(missing_ok=True)
+
     logger.info("Block clip done: %s", output_path.name)
+    return output_path
+
+
+def render_block_clip_fast(
+    background_path: Path,
+    audio_path: Path,
+    subtitle_path: Path,
+    output_path: Path,
+    width: int = 1080,
+    height: int = 1920,
+    fps: int = 30,
+    overlay_image: Optional[Path] = None,
+    background_offset_sec: float = 0.0,
+    use_nvenc: bool = True,
+    overlay_images: Optional[list[dict]] = None,
+    image_mode: str = "popup",
+) -> Path:
+    """Fast renderer: pre-composes frames with PIL, pipes rawvideo to FFmpeg.
+
+    For background mode with overlay images, this is 5-10x faster than
+    render_block_clip() because it avoids the N-layer FFmpeg overlay filter chain.
+    Instead, PIL composes one frame at a time and pipes raw RGB to FFmpeg stdin.
+
+    Falls through to render_block_clip() for popup mode or no overlays.
+    """
+    from PIL import Image as PILImage
+
+    # Only use fast path for background mode with overlays
+    valid_overlays = []
+    if overlay_images:
+        valid_overlays = [
+            ovr for ovr in overlay_images
+            if ovr.get("path") and Path(ovr["path"]).exists()
+        ][:_MAX_OVERLAYS]
+    elif overlay_image and overlay_image.exists():
+        valid_overlays = [{"path": overlay_image, "start_sec": 0.05, "end_sec": 99999.0}]
+
+    if image_mode != "background" or not valid_overlays:
+        return render_block_clip(
+            background_path=background_path, audio_path=audio_path,
+            subtitle_path=subtitle_path, output_path=output_path,
+            width=width, height=height, fps=fps, overlay_image=overlay_image,
+            background_offset_sec=background_offset_sec, use_nvenc=use_nvenc,
+            overlay_images=overlay_images, image_mode=image_mode,
+        )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    audio_info = sf.info(str(audio_path))
+    duration = audio_info.duration
+    total_frames = int(duration * fps)
+
+    # Pre-mix pop sounds (not used in background mode, but keep for consistency)
+    actual_audio = audio_path
+
+    # --- Pre-load all overlay images as PIL ---
+    # Scale to 1.15x output for Ken Burns pan headroom
+    scale_factor = 1.15
+    scaled_w = int(width * scale_factor)
+    scaled_h = int(height * scale_factor)
+
+    loaded_images: list[dict] = []
+    for oi, ovr in enumerate(valid_overlays):
+        img_path = Path(ovr["path"])
+        start_sec = float(ovr.get("start_sec", 0))
+        end_sec = float(ovr.get("end_sec", start_sec + 4.0))
+
+        try:
+            img = PILImage.open(img_path).convert("RGB")
+            # Scale to cover the scaled dimensions
+            img_ratio = max(scaled_w / img.width, scaled_h / img.height)
+            new_w = int(img.width * img_ratio)
+            new_h = int(img.height * img_ratio)
+            img = img.resize((new_w, new_h), PILImage.LANCZOS)
+            # Center crop to exact scaled dimensions
+            left = (new_w - scaled_w) // 2
+            top = (new_h - scaled_h) // 2
+            img = img.crop((left, top, left + scaled_w, top + scaled_h))
+        except Exception as exc:
+            logger.warning("Failed to load overlay image %s: %s", img_path, exc)
+            continue
+
+        # Pan direction
+        sx, sy, ex, ey = _BG_PAN_DIRS[oi % len(_BG_PAN_DIRS)]
+        x_pan_max = scaled_w - width
+        y_pan_max = scaled_h - height
+
+        loaded_images.append({
+            "img": img,
+            "start_sec": start_sec,
+            "end_sec": end_sec,
+            "sx_px": int(sx * x_pan_max),
+            "sy_px": int(sy * y_pan_max),
+            "ex_px": int(ex * x_pan_max),
+            "ey_px": int(ey * y_pan_max),
+        })
+
+    if not loaded_images:
+        # All images failed to load — fall back
+        return render_block_clip(
+            background_path=background_path, audio_path=audio_path,
+            subtitle_path=subtitle_path, output_path=output_path,
+            width=width, height=height, fps=fps, overlay_image=overlay_image,
+            background_offset_sec=background_offset_sec, use_nvenc=use_nvenc,
+            overlay_images=overlay_images, image_mode=image_mode,
+        )
+
+    # Convert loaded PIL images to numpy arrays for fast cropping
+    for item in loaded_images:
+        item["np_img"] = np.array(item["img"])
+        del item["img"]  # free PIL object
+
+    # --- Build FFmpeg command: rawvideo stdin + audio + ASS subtitles ---
+    sub_path_escaped = str(subtitle_path).replace("\\", "/").replace(":", "\\:")
+
+    cmd = [
+        "ffmpeg", "-y",
+        # Input 0: raw RGB frames from stdin
+        "-f", "rawvideo", "-pix_fmt", "rgb24",
+        "-s", f"{width}x{height}", "-r", str(fps),
+        "-i", "pipe:0",
+        # Input 1: audio
+        "-i", str(actual_audio),
+        # Filter: burn subtitles on the video stream
+        "-filter_complex", f"[0:v]ass='{sub_path_escaped}'[vout]",
+        "-map", "[vout]", "-map", "1:a",
+        "-shortest",
+    ]
+
+    if use_nvenc:
+        cmd += ["-c:v", "h264_nvenc", "-preset", "p4", "-b:v", "8M"]
+    else:
+        cmd += ["-c:v", "libx264", "-preset", "fast", "-crf", "20"]
+    cmd += ["-c:a", "aac", "-b:a", "192k"]
+    cmd += [str(output_path)]
+
+    logger.info(
+        "Fast rendering: %d frames, %d overlays, %.1fs, %dx%d → %s",
+        total_frames, len(loaded_images), duration, width, height, output_path.name,
+    )
+
+    # --- Pipe frames to FFmpeg ---
+    import time as _time
+    t_start = _time.monotonic()
+
+    proc = subprocess.Popen(
+        cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+
+    # Black frame for gaps where no image is active
+    black_frame = np.zeros((height, width, 3), dtype=np.uint8)
+
+    try:
+        for frame_idx in range(total_frames):
+            t = frame_idx / fps
+
+            # Find which image is active at time t
+            active_img = None
+            for item in loaded_images:
+                if item["start_sec"] <= t < item["end_sec"]:
+                    active_img = item
+                    break
+
+            if active_img is None:
+                # No image at this time — black frame
+                proc.stdin.write(black_frame.tobytes())
+                continue
+
+            # Calculate Ken Burns pan position
+            dur = active_img["end_sec"] - active_img["start_sec"]
+            progress = min(max((t - active_img["start_sec"]) / dur, 0.0), 1.0)
+
+            crop_x = int(active_img["sx_px"] + (active_img["ex_px"] - active_img["sx_px"]) * progress)
+            crop_y = int(active_img["sy_px"] + (active_img["ey_px"] - active_img["sy_px"]) * progress)
+
+            # Crop the output-sized region from the scaled image
+            frame = active_img["np_img"][crop_y:crop_y + height, crop_x:crop_x + width]
+
+            # Safety: if crop is out of bounds, pad with black
+            if frame.shape[0] != height or frame.shape[1] != width:
+                padded = black_frame.copy()
+                h_actual = min(frame.shape[0], height)
+                w_actual = min(frame.shape[1], width)
+                padded[:h_actual, :w_actual] = frame[:h_actual, :w_actual]
+                frame = padded
+
+            proc.stdin.write(frame.tobytes())
+
+        proc.stdin.close()
+        proc.wait()
+
+        if proc.returncode != 0:
+            stderr = proc.stderr.read() if proc.stderr else b""
+            logger.error("render_block_clip_fast stderr:\n%s", stderr.decode()[-500:])
+            raise RuntimeError(
+                f"render_block_clip_fast failed (exit {proc.returncode}): "
+                f"{stderr.decode()[-500:]}"
+            )
+    except BrokenPipeError:
+        proc.kill()
+        proc.wait()
+        stderr = proc.stderr.read() if proc.stderr else b""
+        raise RuntimeError(f"render_block_clip_fast pipe broken: {stderr.decode()[-500:]}")
+
+    elapsed = _time.monotonic() - t_start
+    logger.info("Fast render done in %.1fs: %s", elapsed, output_path.name)
+
+    # Free numpy arrays
+    for item in loaded_images:
+        del item["np_img"]
+
+    return output_path
+
+
+def concat_audio(audio_paths: list[Path], output_path: Path) -> Path:
+    """Concatenate multiple audio files into one seamless track."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    list_file = output_path.parent / f"{output_path.stem}_audiolist.txt"
+    with open(list_file, "w") as f:
+        for audio in audio_paths:
+            f.write(f"file '{audio.resolve()}'\n")
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "concat", "-safe", "0",
+        "-i", str(list_file),
+        "-c", "copy",
+        str(output_path),
+    ]
+
+    logger.info("Concatenating %d audio files...", len(audio_paths))
+    _run_ffmpeg(cmd, "concat_audio")
+    list_file.unlink(missing_ok=True)
+    logger.info("Audio concat done: %s", output_path)
+    return output_path
+
+
+def merge_ass_subtitles(
+    subtitle_paths: list[Path],
+    durations: list[float],
+    output_path: Path,
+) -> Path:
+    """Merge multiple ASS subtitle files into one, offsetting timestamps."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Read header from first file
+    header_lines: list[str] = []
+    first_events_start = -1
+    first_content = subtitle_paths[0].read_text(encoding="utf-8")
+    for i, line in enumerate(first_content.splitlines()):
+        if line.strip().startswith("Dialogue:"):
+            first_events_start = i
+            break
+        header_lines.append(line)
+
+    # Collect all events with time offsets, clamping to block boundaries
+    all_events: list[str] = []
+    cumulative_offset = 0.0
+
+    for idx, (sub_path, dur) in enumerate(zip(subtitle_paths, durations)):
+        block_end = cumulative_offset + dur
+        content = sub_path.read_text(encoding="utf-8")
+        for line in content.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("Dialogue:"):
+                continue
+            if cumulative_offset > 0.001:
+                shifted = _shift_dialogue_line(stripped, cumulative_offset)
+            else:
+                shifted = stripped
+            # Clamp event to block boundary to prevent overlap with next block
+            shifted = _clamp_dialogue_to_boundary(shifted, block_end)
+            if shifted:
+                all_events.append(shifted)
+        cumulative_offset += dur
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(header_lines))
+        f.write("\n")
+        f.write("\n".join(all_events))
+        f.write("\n")
+
+    logger.info("Merged %d subtitle files → %s (%d events)", len(subtitle_paths), output_path, len(all_events))
+    return output_path
+
+
+def _shift_dialogue_line(line: str, offset_sec: float) -> str:
+    """Shift ASS Dialogue timestamps by offset_sec."""
+    # Format: Dialogue: 0,H:MM:SS.cc,H:MM:SS.cc,Style,...
+    parts = line.split(",", 3)
+    if len(parts) < 4:
+        return line
+    try:
+        start = _ass_to_seconds(parts[1])
+        end = _ass_to_seconds(parts[2])
+        new_start = _seconds_to_ass(start + offset_sec)
+        new_end = _seconds_to_ass(end + offset_sec)
+        return f"{parts[0]},{new_start},{new_end},{parts[3]}"
+    except (ValueError, IndexError):
+        return line
+
+
+def _clamp_dialogue_to_boundary(line: str, block_end_sec: float) -> Optional[str]:
+    """Clamp a Dialogue line so it does not exceed block_end_sec.
+
+    Returns None if the event starts at or after block_end_sec (drop it).
+    """
+    parts = line.split(",", 3)
+    if len(parts) < 4:
+        return line
+    try:
+        start = _ass_to_seconds(parts[1])
+        end = _ass_to_seconds(parts[2])
+    except (ValueError, IndexError):
+        return line
+    if start >= block_end_sec - 0.01:
+        return None  # event is entirely outside this block
+    if end > block_end_sec:
+        new_end = _seconds_to_ass(block_end_sec)
+        return f"{parts[0]},{parts[1]},{new_end},{parts[3]}"
+    return line
+
+
+def _ass_to_seconds(timestamp: str) -> float:
+    """Parse ASS timestamp H:MM:SS.cc to seconds."""
+    ts = timestamp.strip()
+    parts = ts.split(":")
+    if len(parts) == 3:
+        h, m, s = parts
+        return int(h) * 3600 + int(m) * 60 + float(s)
+    return 0.0
+
+
+def build_merged_background(
+    backgrounds: list[Path],
+    durations: list[float],
+    output_path: Path,
+    width: int = 1080,
+    height: int = 1920,
+    fps: int = 30,
+) -> Path:
+    """
+    Build one continuous background video from per-block background segments.
+
+    Each background[i] is trimmed to durations[i] seconds, scaled/cropped,
+    then all are concatenated into one seamless video.
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if len(backgrounds) == 1:
+        # Single background — just scale/crop and trim to total duration
+        total = sum(durations)
+        cmd = ["ffmpeg", "-y", "-stream_loop", "-1", "-i", str(backgrounds[0])]
+        cmd += ["-t", f"{total:.3f}"]
+        cmd += [
+            "-vf",
+            f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},setsar=1,fps={fps}",
+        ]
+        cmd += ["-an", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22"]
+        cmd += [str(output_path)]
+        _run_ffmpeg(cmd, "build_merged_background")
+        return output_path
+
+    # Multiple backgrounds — trim each to its block duration, then concat
+    segment_paths: list[Path] = []
+    for i, (bg, dur) in enumerate(zip(backgrounds, durations)):
+        seg_path = output_path.parent / f"{output_path.stem}_bgseg{i}.mp4"
+        cmd = ["ffmpeg", "-y", "-stream_loop", "-1", "-i", str(bg)]
+        cmd += ["-t", f"{dur:.3f}"]
+        cmd += [
+            "-vf",
+            f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},setsar=1,fps={fps}",
+        ]
+        cmd += ["-an", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22"]
+        cmd += [str(seg_path)]
+        _run_ffmpeg(cmd, f"bg_segment_{i}")
+        segment_paths.append(seg_path)
+
+    # Concat all segments
+    list_file = output_path.parent / f"{output_path.stem}_bglist.txt"
+    with open(list_file, "w") as f:
+        for seg in segment_paths:
+            f.write(f"file '{seg.resolve()}'\n")
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "concat", "-safe", "0",
+        "-i", str(list_file),
+        "-c", "copy",
+        str(output_path),
+    ]
+    _run_ffmpeg(cmd, "concat_bg_segments")
+
+    # Cleanup segments
+    list_file.unlink(missing_ok=True)
+    for seg in segment_paths:
+        seg.unlink(missing_ok=True)
+
+    logger.info("Merged %d backgrounds → %s", len(backgrounds), output_path)
+    return output_path
+
+
+_MAX_OVERLAYS = 12  # Cap to limit FFmpeg memory usage
+
+
+def _premix_pop_sounds(
+    merged_audio_path: Path,
+    overlay_start_times: list[float],
+    pop_volume: float = 0.4,
+) -> Path:
+    """Pre-mix pop.mp3 into merged audio at each overlay start time.
+
+    Returns path to the pre-mixed WAV file. This avoids N adelay filters
+    in FFmpeg, saving hundreds of MB of RAM.
+    """
+    audio_data, sr = sf.read(str(merged_audio_path), dtype="float32")
+    is_mono = audio_data.ndim == 1
+    if is_mono:
+        audio_data = audio_data[:, np.newaxis]
+
+    # Load pop sound, resample if needed
+    pop_data, pop_sr = sf.read(str(POP_SFX), dtype="float32")
+    if pop_data.ndim == 1:
+        pop_data = pop_data[:, np.newaxis]
+
+    # Simple resample by repeating/skipping if sample rates differ
+    if pop_sr != sr:
+        ratio = sr / pop_sr
+        indices = (np.arange(int(len(pop_data) * ratio)) / ratio).astype(int)
+        indices = np.clip(indices, 0, len(pop_data) - 1)
+        pop_data = pop_data[indices]
+
+    # Match channels
+    if pop_data.shape[1] < audio_data.shape[1]:
+        pop_data = np.tile(pop_data, (1, audio_data.shape[1]))[:, :audio_data.shape[1]]
+    elif pop_data.shape[1] > audio_data.shape[1]:
+        pop_data = pop_data[:, :audio_data.shape[1]]
+
+    pop_data = pop_data * pop_volume
+    pop_len = len(pop_data)
+
+    for start_sec in overlay_start_times:
+        start_sample = int(start_sec * sr)
+        end_sample = min(start_sample + pop_len, len(audio_data))
+        paste_len = end_sample - start_sample
+        if paste_len > 0:
+            audio_data[start_sample:end_sample] += pop_data[:paste_len]
+
+    # Clip to prevent distortion
+    audio_data = np.clip(audio_data, -1.0, 1.0)
+
+    if is_mono:
+        audio_data = audio_data[:, 0]
+
+    premixed_path = merged_audio_path.parent / f"{merged_audio_path.stem}_popmixed.wav"
+    sf.write(str(premixed_path), audio_data, sr)
+    logger.debug("Pre-mixed %d pop sounds into %s", len(overlay_start_times), premixed_path.name)
+
+    # Free large numpy arrays immediately
+    del audio_data, pop_data
+    import gc
+    gc.collect()
+
+    return premixed_path
+
+
+def render_single_pass(
+    background_path: Path,
+    merged_audio_path: Path,
+    merged_subtitle_path: Path,
+    output_path: Path,
+    width: int = 1080,
+    height: int = 1920,
+    fps: int = 30,
+    use_nvenc: bool = True,
+    overlay_images: Optional[list[dict]] = None,
+    image_mode: str = "popup",
+) -> Path:
+    """
+    Render the entire video in one FFmpeg pass.
+
+    One continuous looping background + one merged audio + one merged subtitle.
+    Optional per-block overlay images with fade-in/fade-out.
+    Pop sound is pre-mixed into audio (not via FFmpeg filters).
+
+    image_mode:
+      "popup"      — small centered overlay with floating sine animation + pop sound
+      "background" — full-screen overlay with slow corner-to-corner pan, crossfade
+
+    overlay_images: list of {"path": Path, "start_sec": float, "end_sec": float}
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    audio_info = sf.info(str(merged_audio_path))
+    total_duration = audio_info.duration
+
+    # --- Cap overlays to limit FFmpeg memory ---
+    valid_overlays = [
+        ovr for ovr in (overlay_images or [])
+        if ovr.get("path") and Path(ovr["path"]).exists()
+    ][:_MAX_OVERLAYS]
+
+    # --- Pre-mix pop sounds into audio (popup mode only) ---
+    actual_audio = merged_audio_path
+    if image_mode == "popup" and POP_SFX.exists() and valid_overlays:
+        try:
+            pop_times = [float(ovr.get("start_sec", 0)) for ovr in valid_overlays]
+            actual_audio = _premix_pop_sounds(merged_audio_path, pop_times)
+        except Exception as exc:
+            logger.warning("Pop sound pre-mix failed: %s. Using original audio.", exc)
+
+    cmd = ["ffmpeg", "-y"]
+    filters = []
+    input_idx = 0
+
+    # --- Input 0: Background ---
+    if _is_image(background_path):
+        cmd += ["-loop", "1", "-i", str(background_path)]
+        filters.append(
+            f"[0:v]scale=8000:-1,"
+            f"zoompan=z='min(zoom+0.0005,1.3)'"
+            f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
+            f":d=1:s={width}x{height}:fps={fps},"
+            f"setsar=1[bg]"
+        )
+    else:
+        cmd += ["-stream_loop", "-1", "-i", str(background_path)]
+        filters.append(
+            f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},setsar=1,fps={fps}[bg]"
+        )
+    input_idx += 1
+
+    # --- Input 1: Audio (pre-mixed with pop sounds) ---
+    cmd += ["-i", str(actual_audio)]
+    audio_input_idx = input_idx
+    input_idx += 1
+
+    # --- Subtitle burn-in ---
+    sub_path_escaped = str(merged_subtitle_path).replace("\\", "/").replace(":", "\\:")
+    filters.append(f"[bg]ass='{sub_path_escaped}'[subbed]")
+
+    # --- Overlay images ---
+    if valid_overlays:
+        current_label = "subbed"
+
+        if image_mode == "background":
+            # Background mode: full-screen images with slow corner-to-corner pan
+            bg_scale_w = int(width * 1.2)
+            bg_scale_h = int(height * 1.2)
+            x_pan_max = bg_scale_w - width
+            y_pan_max = bg_scale_h - height
+
+            for oi, ovr in enumerate(valid_overlays):
+                start_sec = float(ovr.get("start_sec", 0))
+                end_sec = float(ovr.get("end_sec", start_sec + 4.0))
+                dur = max(end_sec - start_sec, 0.1)
+
+                cmd += ["-loop", "1", "-i", str(Path(ovr["path"]))]
+                ovr_input = input_idx
+                input_idx += 1
+
+                # Pick pan direction (cycle through presets)
+                sx, sy, ex, ey = _BG_PAN_DIRS[oi % len(_BG_PAN_DIRS)]
+                sx_px = int(sx * x_pan_max)
+                sy_px = int(sy * y_pan_max)
+                ex_px = int(ex * x_pan_max)
+                ey_px = int(ey * y_pan_max)
+
+                fade_dur = 0.3
+                fade_in_start = start_sec
+                fade_out_start = max(end_sec - fade_dur, fade_in_start + 0.1)
+
+                ovr_label = f"ovr{oi}"
+                out_label = f"v{oi}" if oi < len(valid_overlays) - 1 else "vout"
+
+                # Scale to cover frame with 20% extra, crop to exact size
+                filters.append(
+                    f"[{ovr_input}:v]scale={bg_scale_w}:{bg_scale_h}"
+                    f":force_original_aspect_ratio=increase,"
+                    f"crop={bg_scale_w}:{bg_scale_h},format=rgba,"
+                    f"fade=t=in:st={fade_in_start:.2f}:d={fade_dur}:alpha=1,"
+                    f"fade=t=out:st={fade_out_start:.2f}:d={fade_dur}:alpha=1[{ovr_label}]"
+                )
+
+                # Animated pan: interpolate position from start to end corner
+                prog = f"min(max((t-{start_sec:.2f})/{dur:.2f},0),1)"
+                x_expr = f"-({sx_px}+({ex_px}-{sx_px})*{prog})"
+                y_expr = f"-({sy_px}+({ey_px}-{sy_px})*{prog})"
+
+                filters.append(
+                    f"[{current_label}][{ovr_label}]overlay="
+                    f"x='{x_expr}':y='{y_expr}':"
+                    f"enable='between(t,{fade_in_start:.2f},{end_sec:.2f})'[{out_label}]"
+                )
+                current_label = out_label
+        else:
+            # Popup mode: centered overlay with gentle floating animation + pop sound
+            ovr_width = int(width * 0.68)
+            for oi, ovr in enumerate(valid_overlays):
+                start_sec = float(ovr.get("start_sec", 0))
+                end_sec = float(ovr.get("end_sec", start_sec + 3.0))
+
+                cmd += ["-loop", "1", "-i", str(Path(ovr["path"]))]
+                ovr_input = input_idx
+                input_idx += 1
+
+                fade_dur = 0.15
+                fade_in_start = start_sec + 0.05
+                fade_out_start = max(end_sec - 0.25, fade_in_start + fade_dur)
+                overlay_end = fade_out_start + fade_dur
+
+                ovr_label = f"ovr{oi}"
+                out_label = f"v{oi}" if oi < len(valid_overlays) - 1 else "vout"
+
+                filters.append(
+                    f"[{ovr_input}:v]scale={ovr_width}:-1,format=rgba,"
+                    f"fade=t=in:st={fade_in_start:.2f}:d={fade_dur}:alpha=1,"
+                    f"fade=t=out:st={fade_out_start:.2f}:d={fade_dur}:alpha=1[{ovr_label}]"
+                )
+                # Floating: gentle sine wave on y (6px amplitude, ~4s cycle)
+                float_y = f"(H-h)/2-40+6*sin((t-{start_sec:.2f})*1.5)"
+                filters.append(
+                    f"[{current_label}][{ovr_label}]overlay="
+                    f"x=(W-w)/2:y='{float_y}':"
+                    f"enable='between(t,{fade_in_start:.2f},{overlay_end:.2f})'[{out_label}]"
+                )
+                current_label = out_label
+    else:
+        filters.append("[subbed]copy[vout]")
+
+    filter_complex = ";\n".join(filters)
+    cmd += ["-filter_complex", filter_complex]
+    cmd += ["-map", "[vout]", "-map", f"{audio_input_idx}:a"]
+    cmd += ["-t", f"{total_duration:.3f}"]
+
+    if use_nvenc:
+        cmd += ["-c:v", "h264_nvenc", "-preset", "p4", "-b:v", "8M"]
+    else:
+        cmd += ["-c:v", "libx264", "-preset", "fast", "-crf", "20"]
+    cmd += ["-c:a", "aac", "-b:a", "192k"]
+    cmd += ["-movflags", "+faststart"]
+
+    cmd += [str(output_path)]
+
+    logger.info("Rendering single-pass video (%.1fs, %d overlays)...", total_duration, len(valid_overlays))
+    _run_ffmpeg(cmd, "render_single_pass")
+
+    # Clean up pre-mixed audio
+    if actual_audio != merged_audio_path and actual_audio.exists():
+        actual_audio.unlink(missing_ok=True)
+
+    logger.info("Single-pass render done: %s", output_path)
     return output_path
 
 
@@ -634,10 +1465,30 @@ def mix_bgm(
         f"[1:a]volume={bgm_volume}[bgm];[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]",
         "-map", "0:v", "-map", "[aout]",
         "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+        "-movflags", "+faststart",
         str(output_path),
     ]
 
     logger.info("Mixing BGM...")
     _run_ffmpeg(cmd, "mix_bgm")
     logger.info("BGM mixed: %s", output_path)
+    return output_path
+
+
+def extract_audio_mp3(video_path: Path, output_path: Path) -> Path:
+    """Extract the final audio track from a rendered video into an MP3 file."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(video_path),
+        "-vn",
+        "-c:a", "libmp3lame",
+        "-q:a", "2",
+        str(output_path),
+    ]
+
+    logger.info("Extracting MP3: %s", output_path.name)
+    _run_ffmpeg(cmd, "extract_audio_mp3")
+    logger.info("MP3 done: %s", output_path)
     return output_path

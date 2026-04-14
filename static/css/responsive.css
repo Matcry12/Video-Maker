@@ -1,0 +1,31 @@
+@media (max-width: 1280px) {
+    .workspace {
+        grid-template-columns: minmax(260px, 340px) minmax(420px, 1fr);
+    }
+    .panel-right { grid-column: 1 / -1; }
+}
+
+@media (max-width: 900px) {
+    .container { padding: var(--space-4); }
+    .topbar {
+        position: static;
+        padding: var(--space-4);
+    }
+    .topbar-main, .topbar-actions { width: 100%; }
+    .topbar-script { width: 100%; }
+    .topbar-script input { width: 100%; min-width: 0; max-width: 100%; }
+    .primary-nav { justify-content: flex-start; }
+    .workspace { grid-template-columns: 1fr; gap: var(--space-4); }
+    .panel-left, .panel-center, .panel-right { grid-column: 1; }
+    .block-row, .block-row-3, .script-grid, .source-controls-grid, .source-call-grid { grid-template-columns: 1fr; }
+    .crawl-grid { grid-template-columns: 1fr; }
+    .topic-pool-grid, .fact-bank-filters { grid-template-columns: 1fr; }
+    .mode-controls { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+    .output-actions { justify-content: flex-start; }
+    .output-actions-danger { margin-left: 0; }
+    .output-picker-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .output-picker-actions { justify-content: flex-start; }
+}

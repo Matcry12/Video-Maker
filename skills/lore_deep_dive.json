@@ -1,0 +1,18 @@
+{
+  "skill_id": "lore_deep_dive",
+  "name": "Lore Deep Dive",
+  "description": "Deep exploration of worldbuilding, lore, timeline, and interconnected details. Goes beyond surface-level to reveal how pieces connect and what the deeper meaning is.",
+  "trigger_keywords": ["lore", "deep dive", "worldbuilding", "timeline", "connected", "lore explained", "universe", "mythology", "backstory", "origin story", "history of"],
+  "content_types": ["lore"],
+  "moods": ["epic", "dark_mystery", "emotional"],
+  "structure": {
+    "hook_rule": "Open with a CONNECTED detail that ties the whole lore together: 'Everything in [topic] connects to one single event. And most people have no idea.' Promise a revelation that changes understanding.",
+    "pacing_rule": "Build the lore piece by piece like assembling a puzzle. Start with a known element, then reveal how it connects to something unexpected. Use 'And this is where it gets deep...', 'Now connect this to...'. Each piece should click into place satisfyingly.",
+    "ending_rule": "End by zooming out to show how ALL the pieces form one coherent picture. Then hint at an even deeper layer: 'But there is one more piece of the puzzle that nobody has found yet.' Loop back to the opening.",
+    "tone": "Passionate lore scholar sharing years of research, reverent but excited",
+    "transitions": ["Và đây là nơi mọi thứ kết nối...", "Bây giờ hãy liên hệ điều này với...", "Nhưng còn sâu hơn thế...", "Và khi bạn ghép tất cả lại..."]
+  },
+  "prompt_injection": "FORMAT: Lore deep dive. Build connections between facts that the viewer never noticed. Show how seemingly unrelated details form a coherent whole. Use phrases like 'This connects to...', 'And if we trace this back...', 'The reason this matters is...'. The viewer should feel like they finally UNDERSTAND the bigger picture. Never just list facts — show how they CONNECT.",
+  "example_hook_en": "Everything in [topic] traces back to one moment. And once you see it, the entire story changes.",
+  "example_hook_vi": "Mọi thứ trong [topic] đều dẫn về một khoảnh khắc duy nhất. Và khi bạn nhìn ra, toàn bộ câu chuyện sẽ thay đổi."
+}

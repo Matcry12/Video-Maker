@@ -1,0 +1,96 @@
+<section id="crawlScreen" class="app-screen">
+    <main class="panel">
+        <div class="crawl-workspace">
+            <div class="crawl-grid">
+                <section class="settings-group">
+                    <h3 class="crawl-section-title">Crawl</h3>
+                    <div class="source-call-grid">
+                        <div>
+                            <label for="contentSource">Source</label>
+                            <select id="contentSource" data-ignore-dirty="true">
+                                <option value="source_1">Wikipedia (source_1)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="sourceLlmProvider">LLM</label>
+                            <select id="sourceLlmProvider" data-ignore-dirty="true">
+                                <option value="groq">Groq</option>
+                                <option value="ollama">Ollama</option>
+                            </select>
+                        </div>
+                    </div>
+                    <label for="sourceTopic">Topic</label>
+                    <input type="text" id="sourceTopic" data-ignore-dirty="true" placeholder="e.g. Ha Long Bay">
+                    <div class="settings-actions">
+                        <button class="btn-primary btn-small" type="button" onclick="fetchSourceDraft()">Fetch Draft</button>
+                        <button class="btn-secondary btn-small" type="button" onclick="clearSourceDraftView()">Clear</button>
+                    </div>
+                    <p id="sourceFetchStatus" class="hint-text">Fetch section-based draft from Wikipedia for this topic.</p>
+
+                    <section id="sourceMetaPanel" class="source-meta-card" hidden>
+                        <h4 id="sourceMetaTitle" class="source-meta-title"></h4>
+                        <p id="sourceMetaLine1" class="source-meta-line"></p>
+                        <p id="sourceMetaLine2" class="source-meta-line"></p>
+                        <p id="sourceMetaLine3" class="source-meta-line"></p>
+                    </section>
+
+                    <section id="sourceDraftSummary" class="source-meta-card" hidden>
+                        <h4 class="source-meta-title">Draft Sections</h4>
+                        <p id="sourceDraftStats" class="source-meta-line"></p>
+                        <div id="sourceSectionList" class="source-section-list"></div>
+                    </section>
+                    <ul id="sourceWarnings" class="source-warning-list" hidden></ul>
+                </section>
+
+                <section class="settings-group">
+                    <h3 class="crawl-section-title">Handle Draft</h3>
+                    <label for="sourceHandlingMode">Handling Mode</label>
+                    <select id="sourceHandlingMode" data-ignore-dirty="true">
+                        <option value="raw_json">Raw Draft -> Save JSON</option>
+                        <option value="raw_script">Raw Draft -> Basic Script</option>
+                        <option value="llm_script" selected>LLM -> Video Script JSON</option>
+                    </select>
+
+                    <details class="advanced-panel mt-sm">
+                        <summary>Prompt Override</summary>
+                        <div class="advanced-body">
+                            <p class="hint-text">Optional. Used when mode is LLM.</p>
+                            <textarea id="sourcePromptOverride" data-ignore-dirty="true" rows="4" placeholder="Custom style..."></textarea>
+                            <button class="btn-small mt-sm" type="button" onclick="resetSourcePromptOverride()">Default</button>
+                        </div>
+                    </details>
+
+                    <label for="sourceDraftEditor">Raw Draft JSON</label>
+                    <textarea id="sourceDraftEditor" class="source-draft-editor" data-ignore-dirty="true" spellcheck="false"></textarea>
+                    <label for="sourceDraftSectionSelector">Sections to Load</label>
+                    <div class="source-saved-row">
+                        <input type="text" id="sourceDraftSectionSelector" data-ignore-dirty="true" placeholder="e.g. 1-4, 5, 10">
+                        <button class="btn-secondary btn-small" type="button" onclick="applySourceSectionSelection()">Load Sections</button>
+                    </div>
+                    <div class="settings-actions">
+                        <button class="btn-primary btn-small" type="button" onclick="runSourceHandling(true)">Run + Apply</button>
+                        <button class="btn-secondary btn-small" type="button" onclick="saveSourceDraftToProject()">Save Draft</button>
+                    </div>
+                    <label for="sourceSavedDraftSelect">Saved Drafts</label>
+                    <div class="source-saved-row">
+                        <select id="sourceSavedDraftSelect" data-ignore-dirty="true">
+                            <option value="">No saved drafts yet</option>
+                        </select>
+                        <button class="btn-secondary btn-small" type="button" onclick="refreshSavedDraftList()">Refresh</button>
+                    </div>
+                    <div class="settings-actions">
+                        <button class="btn-secondary btn-small" type="button" onclick="loadSavedDraftToEditor()">Load Selected</button>
+                    </div>
+                    <p id="sourceHandleStatus" class="hint-text">Edit raw draft JSON or run handling to build video-ready script blocks.</p>
+
+                    <section id="sourceHandleMetaPanel" class="source-meta-card" hidden>
+                        <h4 id="sourceHandleMetaTitle" class="source-meta-title"></h4>
+                        <p id="sourceHandleMetaLine1" class="source-meta-line"></p>
+                        <p id="sourceHandleMetaLine2" class="source-meta-line"></p>
+                    </section>
+                    <ul id="sourceHandleWarnings" class="source-warning-list" hidden></ul>
+                </section>
+            </div>
+        </div>
+    </main>
+</section>

@@ -1,0 +1,18 @@
+{
+  "skill_id": "theory",
+  "name": "Theory & Analysis",
+  "description": "Fan theory analysis and debate format. Presents evidence for controversial theories, connects dots between clues, and invites viewers to pick a side in ongoing debates.",
+  "trigger_keywords": ["theory", "fan theory", "analysis", "what if", "debate", "controversial", "conspiracy theory", "evidence", "proof", "explained", "could it be"],
+  "content_types": ["theory"],
+  "moods": ["dark_mystery", "epic"],
+  "structure": {
+    "hook_rule": "Open with the most CONTROVERSIAL claim of the theory as if it is a fact: 'What if [character] was actually [theory] all along?' Make the viewer immediately pick a side.",
+    "pacing_rule": "Present evidence piece by piece like a detective building a case. Use 'Evidence number one...', 'And here is what confirms it...', 'But critics say...'. Include ONE strong counter-argument, then demolish it.",
+    "ending_rule": "End with an open verdict that forces engagement: 'The evidence is right there. The only question is... do you believe it?' Loop back to the opening claim.",
+    "tone": "Investigative journalist presenting a case, confident but inviting debate",
+    "transitions": ["Và đây là bằng chứng...", "Nhưng chờ đã, có người phản bác...", "Tuy nhiên, điều này giải thích tất cả...", "Và nếu đúng vậy thì..."]
+  },
+  "prompt_injection": "FORMAT: Theory analysis with evidence. Present the theory as plausible, not crazy. Show 3-4 pieces of evidence, address one counter-argument, then conclude with a compelling 'what if'. The viewer should leave thinking 'wait, that actually makes sense'. Frame as intellectual debate, not tinfoil hat conspiracy. Use connecting logic: 'This explains why...', 'And if we look at this scene again...'.",
+  "example_hook_en": "What if [theory]? Before you dismiss it, look at the evidence.",
+  "example_hook_vi": "Nếu [theory] thì sao? Trước khi bạn phản bác, hãy nhìn vào bằng chứng."
+}

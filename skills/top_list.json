@@ -1,0 +1,18 @@
+{
+  "skill_id": "top_list",
+  "name": "Top List",
+  "description": "Ranked countdown list format like top 5, top 10, ranking best to worst. Numbered items with dramatic reveals building to the number one spot.",
+  "trigger_keywords": ["top 5", "top 10", "top 3", "ranking", "best", "worst", "countdown", "list", "ranked", "number one", "top list"],
+  "content_types": ["comparison"],
+  "moods": ["epic", "shocking"],
+  "structure": {
+    "hook_rule": "Tease the NUMBER ONE item immediately: 'Number one on this list will SHOCK you.' or 'The top spot goes to something nobody expected.' Then start from the bottom of the list.",
+    "pacing_rule": "Count down from the last number to number one. Each item gets a brief reveal with ONE killer detail. Use 'But wait...' transitions between items. Spend the MOST time on number one.",
+    "ending_rule": "After revealing number one, add a twist: 'But there is actually a secret number zero that nobody talks about...' or loop back: 'And that is why number one connects back to everything else on this list.'",
+    "tone": "Energetic countdown host, building excitement with each number",
+    "transitions": ["Tiếp theo...", "Nhưng đó chưa phải số một...", "Và ở vị trí tiếp theo...", "Nhưng chờ đã, số một mới thực sự điên rồ..."]
+  },
+  "prompt_injection": "FORMAT: Numbered countdown list. Start by teasing the number one pick, then count down from the bottom. Each item needs ONE memorable detail, not a paragraph. Build drama toward number one. The number one reveal should feel like a mic drop. Use natural counting transitions, not robotic 'Number 5 is...' format. Make it conversational.",
+  "example_hook_en": "Number one on this list made me rethink everything. Let us start from the bottom.",
+  "example_hook_vi": "Số một trong danh sách này sẽ khiến bạn phải suy nghĩ lại tất cả. Hãy bắt đầu từ cuối danh sách."
+}

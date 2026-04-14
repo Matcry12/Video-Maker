@@ -38,3 +38,4 @@ output/
 # Local project content you likely don't want to track
 json_scripts/
 assets/videos/
+content_drafts/
