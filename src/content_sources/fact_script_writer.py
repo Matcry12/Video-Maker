@@ -273,14 +273,21 @@ def _build_prompt(
         "- The ending should feel like a cliffhanger that the hook answers."
     )
 
-    transitions = structure.get("transitions") or [
-        "Nhưng đó chưa phải tất cả...", "Điều thú vị hơn là...",
-        "Nhưng chờ đã...", "Và đây là phần điên rồ nhất...",
-    ]
+    # Language-aware transitions
+    is_vietnamese = language.startswith("vi")
+    if is_vietnamese:
+        transitions = structure.get("transitions_vi") or structure.get("transitions") or [
+            "Nhưng đó chưa phải tất cả...", "Điều thú vị hơn là...",
+            "Nhưng chờ đã...", "Và đây là phần điên rồ nhất...",
+        ]
+    else:
+        transitions = structure.get("transitions_en") or structure.get("transitions") or [
+            "But that's not even the craziest part...", "And here's where it gets insane...",
+            "But wait...", "Now here's the thing nobody talks about...",
+        ]
     transitions_str = ", ".join(f"'{t}'" for t in transitions)
 
     # Skill-specific hook examples
-    is_vietnamese = language.startswith("vi")
     if skill:
         example_hook = skill.get("example_hook_vi" if is_vietnamese else "example_hook_en", "")
     else:

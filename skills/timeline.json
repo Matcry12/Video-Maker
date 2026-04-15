@@ -1,0 +1,19 @@
+{
+  "skill_id": "timeline",
+  "name": "Timeline / Evolution",
+  "description": "Chronological progression showing how something evolved, changed, or transformed over time. From origin to current state, revealing surprising turning points along the way. Works for technology evolution, character development, franchise history, trend cycles.",
+  "trigger_keywords": ["timeline", "evolution", "history", "how it started", "transformation", "over the years", "through the years", "progression", "development", "journey", "from start", "beginning to end", "chronological", "evolution of", "how it changed"],
+  "content_types": ["timeline", "lore"],
+  "moods": ["epic", "emotional"],
+  "structure": {
+    "hook_rule": "Open with a BEFORE/AFTER contrast that shocks: 'In [year], [topic] was [humble/surprising beginning]. Today, it [current impressive state]. But the journey between those two points? Absolutely insane.' The contrast must be dramatic enough to make the viewer think 'HOW did that happen?'",
+    "pacing_rule": "Move chronologically but SKIP boring parts. Hit only the turning points — moments where everything changed direction. 4-5 pivotal moments max. Each turning point should feel like a plot twist: 'Everything was going fine. Then in [year]...' Accelerate through stable periods, slow down for game-changing moments.",
+    "ending_rule": "End at the present or near-future with a perspective shift: 'And looking at where it started vs. where it is now... [profound observation].' Then tease what's next: 'But what happens next could change everything again.' Loop back to the humble beginning for emotional contrast.",
+    "tone": "Time-lapse narrator who sees patterns across decades. Mix of wonder at transformation and sharp insight at turning points. Never dry or encyclopedic — each era should feel alive.",
+    "transitions_en": ["But then everything changed in...", "And nobody saw this coming...", "Fast forward to...", "And that single moment changed the trajectory forever..."],
+    "transitions_vi": ["Nhưng rồi mọi thứ thay đổi vào...", "Và không ai lường trước được...", "Tua nhanh đến...", "Và khoảnh khắc đó đã thay đổi quỹ đạo mãi mãi..."]
+  },
+  "prompt_injection": "FORMAT: Chronological timeline with dramatic turning points. Structure: CONTRAST HOOK (then vs. now) → ORIGIN (specific starting moment) → TURNING POINT 1 (first big change) → TURNING POINT 2 (unexpected twist) → TURNING POINT 3 (the game-changer) → PRESENT DAY + FUTURE TEASE. Only hit the PIVOTAL moments — skip everything between turning points. Each turning point should feel like a mini plot twist. Use year/date markers to ground the viewer: 'By 1998...', 'Then in 2015...'. Show cause and effect between turning points — don't just list dates. Minimum 200 words.",
+  "example_hook_en": "In 2004, [topic] was [humble state]. Today, it's [impressive state]. And the story of how that happened? Pure chaos.",
+  "example_hook_vi": "Năm 2004, [topic] chỉ là [humble state]. Ngày nay, nó là [impressive state]. Và câu chuyện đằng sau? Hỗn loạn hoàn toàn."
+}

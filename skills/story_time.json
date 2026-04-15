@@ -1,0 +1,19 @@
+{
+  "skill_id": "story_time",
+  "name": "Story Time",
+  "description": "Narrative storytelling with emotional arc — the viewer feels like they're being told a real story with stakes, tension, and a payoff. Works for historical events, character backstories, real incidents, and dramatic retellings. The format that keeps viewers watching until the very last second.",
+  "trigger_keywords": ["story", "story time", "what happened", "the story of", "true story", "real story", "how it happened", "the day", "incident", "tragedy", "backstory", "origin", "tale", "narrative", "storytime"],
+  "content_types": ["story_time", "lore", "dark_secrets"],
+  "moods": ["emotional", "dark_mystery", "epic"],
+  "structure": {
+    "hook_rule": "Open IN THE MIDDLE of the most dramatic moment — NOT at the beginning of the story. Drop the viewer into chaos: 'He had 30 seconds to make a decision that would change everything.' or 'Nobody expected what happened next.' Then pull back: 'But to understand why, we need to go back to...' This is the cold open technique.",
+    "pacing_rule": "Follow a 3-act structure compressed into 60 seconds: ACT 1 (setup, 20%): Set the scene with ONE specific detail that grounds the viewer. ACT 2 (tension, 50%): Escalate stakes with 2-3 complications. Use 'But then...', 'What nobody knew was...', 'And that's when everything changed.' ACT 3 (payoff, 30%): Deliver the resolution with emotional weight. Never rush the ending.",
+    "ending_rule": "End with emotional resonance — not just what happened, but what it MEANT. 'And to this day, [lasting consequence].' or 'That decision didn't just change [subject]. It changed everything.' Loop back by connecting the ending emotion to the opening chaos.",
+    "tone": "Master storyteller by a campfire. Controlled pacing — know when to speed up (action) and when to slow down (emotion). Never detached or clinical. The narrator FEELS this story.",
+    "transitions_en": ["But what nobody knew was...", "And that's when everything changed...", "But the real story starts here...", "And then came the moment nobody saw coming..."],
+    "transitions_vi": ["Nhưng điều không ai biết là...", "Và đó là lúc mọi thứ thay đổi...", "Nhưng câu chuyện thực sự bắt đầu từ đây...", "Và rồi đến khoảnh khắc không ai ngờ tới..."]
+  },
+  "prompt_injection": "FORMAT: Narrative storytelling with emotional arc. CRITICAL STRUCTURE: COLD OPEN (drop into the climax) → REWIND ('to understand this, we go back to...') → SETUP (one grounding detail) → ESCALATION (2-3 rising complications) → CLIMAX (the moment everything changes) → RESONANCE (what it meant, not just what happened). Write like a storyteller, not a reporter. Use sensory details, specific moments, and emotional beats. The viewer should FEEL the story, not just hear facts. Show, don't tell. 'His hands were shaking' beats 'He was nervous.' Minimum 200 words.",
+  "example_hook_en": "He had exactly 4 minutes before the whole thing collapsed. And the decision he made in those 4 minutes? It changed history.",
+  "example_hook_vi": "Anh ấy có đúng 4 phút trước khi mọi thứ sụp đổ. Và quyết định trong 4 phút đó? Nó đã thay đổi lịch sử."
+}

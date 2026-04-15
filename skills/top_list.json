@@ -1,18 +1,19 @@
 {
   "skill_id": "top_list",
   "name": "Top List",
-  "description": "Ranked countdown list format like top 5, top 10, ranking best to worst. Numbered items with dramatic reveals building to the number one spot.",
-  "trigger_keywords": ["top 5", "top 10", "top 3", "ranking", "best", "worst", "countdown", "list", "ranked", "number one", "top list"],
+  "description": "Ranked countdown list format — top 5, top 10, ranking best to worst. Numbered items with dramatic build-up, each entry more impactful than the last, climaxing with a mic-drop number one reveal.",
+  "trigger_keywords": ["top 5", "top 10", "top 3", "top 7", "ranking", "best", "worst", "countdown", "list", "ranked", "number one", "top list", "strongest", "most powerful", "greatest", "most dangerous", "weakest"],
   "content_types": ["comparison"],
   "moods": ["epic", "shocking"],
   "structure": {
-    "hook_rule": "Tease the NUMBER ONE item immediately: 'Number one on this list will SHOCK you.' or 'The top spot goes to something nobody expected.' Then start from the bottom of the list.",
-    "pacing_rule": "Count down from the last number to number one. Each item gets a brief reveal with ONE killer detail. Use 'But wait...' transitions between items. Spend the MOST time on number one.",
-    "ending_rule": "After revealing number one, add a twist: 'But there is actually a secret number zero that nobody talks about...' or loop back: 'And that is why number one connects back to everything else on this list.'",
-    "tone": "Energetic countdown host, building excitement with each number",
-    "transitions": ["Tiếp theo...", "Nhưng đó chưa phải số một...", "Và ở vị trí tiếp theo...", "Nhưng chờ đã, số một mới thực sự điên rồ..."]
+    "hook_rule": "Tease number one IMMEDIATELY — but don't reveal it: 'Number one on this list changes EVERYTHING about how you see [topic]. But let's start from the bottom.' Create an itch the viewer MUST scratch by watching the whole video. Never reveal the top pick in the hook.",
+    "pacing_rule": "Count down from the last number to number one. Each entry gets ONE killer detail (not a paragraph) — the fact that makes it unique. Quick entries at the bottom (1-2 sentences each), progressively more detail as you approach number one. Spend 3x more words on #1 than any other entry. Use dramatic transitions between entries.",
+    "ending_rule": "After the #1 reveal, add an unexpected twist: 'But there's actually a secret pick that nobody talks about...' or 'And that's why number one connects back to everything else on this list.' Loop back to the hook's tease.",
+    "tone": "Energetic countdown host building to a crescendo. Start confident, end EXPLOSIVE. Each number should feel more important than the last. Think sports commentator meets hype man.",
+    "transitions_en": ["Next up...", "But that's not number one...", "And at the next spot...", "But wait, number one is where it gets INSANE..."],
+    "transitions_vi": ["Tiếp theo...", "Nhưng đó chưa phải số một...", "Và ở vị trí tiếp theo...", "Nhưng chờ đã, số một mới thực sự điên rồ..."]
   },
-  "prompt_injection": "FORMAT: Numbered countdown list. Start by teasing the number one pick, then count down from the bottom. Each item needs ONE memorable detail, not a paragraph. Build drama toward number one. The number one reveal should feel like a mic drop. Use natural counting transitions, not robotic 'Number 5 is...' format. Make it conversational.",
-  "example_hook_en": "Number one on this list made me rethink everything. Let us start from the bottom.",
-  "example_hook_vi": "Số một trong danh sách này sẽ khiến bạn phải suy nghĩ lại tất cả. Hãy bắt đầu từ cuối danh sách."
+  "prompt_injection": "FORMAT: Numbered countdown list. CRITICAL STRUCTURE: Hook tease of #1 → Count from bottom → Quick entries with ONE killer detail each → Extended #1 reveal → Twist closer. Each entry needs ONE memorable detail, not an essay. Build drama geometrically — not linearly. The #1 reveal should feel like a mic drop moment. Use natural counting language, NOT robotic 'Number 5 is...' — instead: 'Coming in at five...', 'At number three, and this one surprised me...'. Make transitions feel like mini-cliffhangers. Minimum 200 words.",
+  "example_hook_en": "Number one on this list made me completely rethink [topic]. Seriously. Let's start from the bottom and work our way up.",
+  "example_hook_vi": "Số một trong danh sách này đã khiến tôi phải suy nghĩ lại hoàn toàn về [topic]. Nghiêm túc luôn. Hãy bắt đầu từ cuối."
 }

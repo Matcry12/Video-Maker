@@ -1,18 +1,19 @@
 {
   "skill_id": "comparison",
   "name": "Comparison / VS Battle",
-  "description": "Side-by-side comparison or versus battle format. Compares two or more subjects across multiple dimensions with a dramatic winner reveal at the end.",
-  "trigger_keywords": ["vs", "versus", "comparison", "who wins", "battle", "fight", "better", "stronger", "which is", "who would win", "compared to"],
+  "description": "Head-to-head comparison or versus battle. Compares two or more subjects across multiple dimensions with dramatic tension, upset reveals, and a definitive winner — but always with a twist that keeps the debate alive.",
+  "trigger_keywords": ["vs", "versus", "comparison", "who wins", "battle", "fight", "better", "stronger", "which is", "who would win", "compared to", "or", "difference between", "match up", "face off"],
   "content_types": ["comparison"],
   "moods": ["epic", "funny"],
   "structure": {
-    "hook_rule": "Open with the matchup and a provocative claim: '[A] vs [B]. Everyone thinks [A] wins, but the numbers tell a completely different story.' Create immediate tension.",
-    "pacing_rule": "Compare across 3-4 dimensions (stats, achievements, hidden abilities). Give each side a fair showing. Use 'In round one...', 'But here is where it flips...'. Save the DECISIVE factor for last.",
-    "ending_rule": "Reveal the winner with a twist nobody expected. Then add: 'But in one specific scenario, the loser actually dominates...' Loop back to challenge the opening claim.",
-    "tone": "Sports commentator calling a championship match, dramatic and energetic",
-    "transitions": ["Nhưng ở vòng tiếp theo...", "Và đây là lúc mọi thứ đảo ngược...", "Tưởng như đã rõ ràng, nhưng...", "Và yếu tố quyết định là..."]
+    "hook_rule": "Open with the matchup and a PROVOCATIVE claim that challenges the popular pick: '[A] vs [B]. Everyone picks [A]. But the actual numbers tell a completely different story.' or 'Everyone says [A] would win. They're wrong, and I can prove it.' Create immediate tension and controversy.",
+    "pacing_rule": "Compare across 3-4 specific dimensions (NOT generic categories). Each round should have a clear 'winner' for that dimension. Use fight commentary language: 'In round one...', 'But here's where it FLIPS...', 'And this is the round nobody expected...'. Save the DECISIVE, unexpected factor for last. Give the underdog at least one convincing round.",
+    "ending_rule": "Reveal the winner with a twist nobody expected. Then add: 'But there's one specific scenario where the loser actually DESTROYS the winner...' or 'Unless you factor in [X], which changes everything.' Loop back to challenge the opening claim. Keep the debate alive.",
+    "tone": "Championship fight commentator calling the biggest match of the year. Dramatic, energetic, slightly biased toward the underdog. Build tension like a boxing match — ebb and flow, not one-sided.",
+    "transitions_en": ["But in the next round...", "And this is where everything flips...", "It seemed clear, but...", "And the deciding factor is..."],
+    "transitions_vi": ["Nhưng ở vòng tiếp theo...", "Và đây là lúc mọi thứ đảo ngược...", "Tưởng như đã rõ ràng, nhưng...", "Và yếu tố quyết định là..."]
   },
-  "prompt_injection": "FORMAT: VS battle comparison. Set up both sides fairly, then create dramatic reveals as you compare them. Use concrete numbers and stats where possible. Build tension toward the final verdict. The winner reveal should feel earned, not arbitrary. End with a twist that keeps the debate alive. Never be boring or neutral — take a stance but show your work.",
-  "example_hook_en": "[A] vs [B]. Everyone picks [A]. But wait until you see the numbers.",
-  "example_hook_vi": "[A] vs [B]. Ai cũng chọn [A]. Nhưng hãy đợi đến khi bạn thấy con số."
+  "prompt_injection": "FORMAT: VS battle comparison with round-by-round structure. CRITICAL: Use concrete numbers, stats, feats, and specific examples — never vague 'one is stronger' claims. Structure: PROVOCATIVE MATCHUP HOOK → Round 1 (obvious winner) → Round 2 (upset/flip) → Round 3 (the clincher nobody expected) → WINNER REVEAL + twist caveat. Build tension like a real fight — let each side shine before the verdict. The winner reveal should feel EARNED, not arbitrary. End with a twist that keeps viewers debating in comments. Minimum 200 words.",
+  "example_hook_en": "Goku vs Saitama. Everyone picks Goku. But wait until you see what Saitama's feats actually prove.",
+  "example_hook_vi": "Goku vs Saitama. Ai cũng chọn Goku. Nhưng hãy đợi đến khi bạn thấy Saitama thực sự làm được gì."
 }
