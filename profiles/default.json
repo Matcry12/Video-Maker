@@ -19,7 +19,7 @@
       "max_snippets": 15,
       "page_text_max_chars": 8000,
       "agentic_provider": "gemini",
-      "agentic_model": "gemma-4-31b-it",
+      "agentic_model": "gemini-3.1-flash-lite-preview",
       "bm25_threshold": 1.2,
       "min_grounded_facts": 6,
       "min_tier_diversity": 2,
@@ -93,21 +93,21 @@
   },
   "models": {
     "defaults": {
-      "providers": ["groq", "gemini"],
-      "gemini_model": "gemma-3-27b-it",
+      "providers": ["gemini", "groq"],
+      "gemini_model": "gemini-3.1-flash-lite-preview",
       "groq_model": "llama-3.3-70b-versatile"
     },
     "stages": {
-      "script":           { "providers": ["gemini", "groq"], "gemini_model": "gemma-4-31b-it", "groq_model": "llama-3.3-70b-versatile" },
-      "quality_gate":     { "providers": ["gemini", "groq"], "gemini_model": "gemma-4-31b-it", "groq_model": "llama-3.3-70b-versatile" },
+      "script":           { "providers": ["gemini", "groq"], "gemini_model": "gemini-3.1-flash-lite-preview", "groq_model": "llama-3.3-70b-versatile" },
+      "quality_gate":     { "providers": ["gemini", "groq"], "gemini_model": "gemini-3.1-flash-lite-preview", "groq_model": "llama-3.3-70b-versatile" },
       "refine":           {},
       "research":         {},
-      "research_extract": { "providers": ["gemini", "groq"], "gemini_model": "gemma-4-31b-it", "groq_model": "llama-3.3-70b-versatile", "no_think": true },
-      "plan":             { "providers": ["groq", "gemini"], "groq_model": "llama-3.3-70b-versatile", "gemini_model": "gemma-3-27b-it" },
+      "research_extract": { "providers": ["gemini", "groq"], "gemini_model": "gemini-3.1-flash-lite-preview", "groq_model": "llama-3.3-70b-versatile", "no_think": true },
+      "plan":             { "providers": ["gemini", "groq"], "gemini_model": "gemini-3.1-flash-lite-preview", "groq_model": "llama-3.3-70b-versatile" },
       "crawl":            { "providers": ["groq"], "groq_model": "llama-3.1-8b-instant" },
       "interest_rank":    { "providers": ["groq"], "groq_model": "llama-3.1-8b-instant" },
       "bank_extract":     { "providers": ["groq"], "groq_model": "llama-3.1-8b-instant" },
-      "research_eval":   { "providers": ["groq"], "groq_model": "llama-3.1-8b-instant" },
+      "research_eval":    { "providers": ["groq"], "groq_model": "llama-3.1-8b-instant" },
       "trend_brainstorm": { "providers": ["groq"], "groq_model": "llama-3.3-70b-versatile" }
     }
   },
