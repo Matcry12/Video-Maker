@@ -97,8 +97,14 @@ def run_agentic_research(
     warnings: list[str] = []
     resolved_skill = _resolve_skill(skill_id, topic_category)
 
-    # Build prompt — use user_prompt if available, fall back to topic
+    # Build prompt — prefix with topic (improves anchor extraction from "JJK" to actual topic)
+    # and append must_cover so the agent is explicitly instructed on required angles
     prompt = user_prompt or topic
+    if topic:
+        prompt = f"{topic}: {prompt}"
+    if must_cover:
+        must_str = "\n".join(f"- {item}" for item in must_cover)
+        prompt += f"\n\nYou MUST specifically cover:\n{must_str}"
 
     emit({"phase": "research", "message": f"Agentic research: '{topic}' (skill: {resolved_skill})"})
     logger.info("Agentic research: topic=%r skill=%r provider=gemini", topic, resolved_skill)
