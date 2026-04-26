@@ -42,3 +42,26 @@ content_drafts/
 # Added by code-review-graph
 .code-review-graph/
 .omx/
+
+# Lab / experimental files (not for production)
+lab/
+plans/
+
+# One-off scripts and verification docs
+bench_gemma.py
+run_pr2_smoke.py
+run_pr4_smoke.py
+PR1_VERIFIED.md
+PR2_VERIFIED.md
+PR3_VERIFIED.md
+PR4_VERIFIED.md
+QUALITY_REPORT.md
+ISSUES.md
+LAB_EDITOR_INTEGRATION_PLAN.md
+
+# Binary diagrams
+PIPELINE_FLOW.png
+RAG_DETAIL.png
+
+# AI tool configs
+.codex
