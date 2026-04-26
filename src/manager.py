@@ -18,6 +18,7 @@ from typing import Callable, Optional
 from pydantic import BaseModel, Field
 
 from .tts import TTSEngine, default_voice_for_language
+from .agent_config import load_agent_settings
 
 from PIL import Image as PILImage
 from .editor import (
@@ -34,6 +35,19 @@ OUTPUT_DIR = PROJECT_ROOT / "output"
 
 
 _DOWNSCALE_CACHE_DIR = TMP_DIR / "cache" / "resized"
+
+
+def _nvenc_available() -> bool:
+    """Probe whether NVENC hardware encoding is available."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-encoders"],
+            capture_output=True, text=True, timeout=5,
+        )
+        return "h264_nvenc" in result.stdout
+    except Exception:
+        return False
 
 
 def _downscale_image(path: Path, max_width: int = 734) -> Path:
@@ -268,6 +282,11 @@ class SubtitleConfig(BaseModel):
     presets: dict[str, SubtitlePreset] = Field(default_factory=_default_subtitle_presets)
 
 
+class EditorConfig(BaseModel):
+    min_img_sec: float = 6.0
+    max_img_sec: float = 8.0
+
+
 class Profile(BaseModel):
     profile_name: str = "default"
     resolution: dict = Field(default_factory=lambda: {"width": 1080, "height": 1920})
@@ -277,6 +296,7 @@ class Profile(BaseModel):
     global_audio: GlobalAudio = Field(default_factory=GlobalAudio)
     tts: TTSConfig = Field(default_factory=TTSConfig)
     subtitle: SubtitleConfig = Field(default_factory=SubtitleConfig)
+    editor: EditorConfig = Field(default_factory=EditorConfig)
 
 
 # --- Manager ---
@@ -287,7 +307,7 @@ class VideoManager:
     def __init__(
         self,
         profile_path: Optional[Path] = None,
-        use_nvenc: bool = True,
+        use_nvenc=None,
     ):
         # Load profile
         if profile_path is None:
@@ -296,7 +316,12 @@ class VideoManager:
         self.profile = Profile(**raw)
         logger.info("Loaded profile: %s", self.profile.profile_name)
 
+        # Auto-detect NVENC if not explicitly set
+        if use_nvenc is None:
+            force_cpu = load_agent_settings().get("force_cpu_encode", False)
+            use_nvenc = False if force_cpu else _nvenc_available()
         self.use_nvenc = use_nvenc
+        logger.info("Encoder: %s", "h264_nvenc" if use_nvenc else "libx264")
 
         # Init TTS engine
         self.tts = TTSEngine()
@@ -585,8 +610,10 @@ class VideoManager:
             voice = self._get_voice(block, script)
             tts_settings = self._resolve_tts_settings(block, script)
             tts_engine = self._get_worker_tts()
+            import re as _re
+            _tts_text = _re.sub(r'\s*\[[A-Z]\d+\]\s*', ' ', block.text).strip()
             result = tts_engine.synthesize(
-                text=block.text,
+                text=_tts_text,
                 output_path=audio_path,
                 voice=voice,
                 alignment_mode=subtitle_alignment_mode,
@@ -662,8 +689,8 @@ class VideoManager:
 
         # Phase 4: Block-by-block rendering
         # Render each block individually, then concat — keeps RAM low
-        _MIN_IMG_SEC = 6.0
-        _MAX_IMG_SEC = 8.0
+        _MIN_IMG_SEC = self.profile.editor.min_img_sec
+        _MAX_IMG_SEC = self.profile.editor.max_img_sec
         image_mode = script.image_mode
         if image_mode == "background":
             ovr_max_width = int(self.profile.resolution["width"] * 1.2)

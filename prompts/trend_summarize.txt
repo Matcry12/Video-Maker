@@ -1,0 +1,16 @@
+Summarize the following anime/game for a video creator's research cache.
+
+TITLE: {title}
+GENRES: {genres}
+SYNOPSIS: {synopsis}
+TRENDING REASON: {trending_reason}
+REDDIT CONTEXT: {reddit_context}
+
+Produce a dense one-paragraph summary (80-120 words) covering:
+- genre and tone
+- central conflict / premise
+- a specific recent plot point or update (if available)
+- typical audience reaction / critical reception
+
+Do NOT include recommendations, marketing language, or vague praise.
+Output plain text only. No markdown. No preamble.

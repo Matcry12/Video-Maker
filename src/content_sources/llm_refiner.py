@@ -8,11 +8,16 @@ Output: cleaned script JSON with same shape.
 from __future__ import annotations
 
 import json
-import os
 import re
+from pathlib import Path as _Path
 from typing import Any
 
-DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+_PROMPT_DIR = _Path(__file__).parent.parent.parent / "prompts"
+
+
+def _load_prompt(name: str) -> str:
+    return (_PROMPT_DIR / name).read_text(encoding="utf-8")
+
 DEFAULT_PROMPT_VERSION = "v5"
 LLM_INPUT_SECTION_LIMITS = {
     "short": 4,
@@ -45,11 +50,6 @@ def refine_draft_with_groq(
 
     Raises RuntimeError on any API or parsing failure.
     """
-    api_key = os.getenv("GROQ_API_KEY", "").strip()
-    if not api_key:
-        raise RuntimeError("GROQ_API_KEY is not configured.")
-
-    model = (os.getenv("GROQ_MODEL", "").strip() or DEFAULT_GROQ_MODEL)
     normalized_length = _normalize_length_target(length_target)
     llm_input_script, llm_input_meta = _build_llm_input_script(
         raw_script=raw_script,
@@ -65,33 +65,30 @@ def refine_draft_with_groq(
         length_target=normalized_length,
     )
 
-    from ..llm_client import chat_completion
+    from ..llm_client import chat_completion_with_meta
 
     try:
-        content = chat_completion(
-            system=(
-                "You rewrite short narration drafts and return strict JSON only. "
-                "Do not add facts that are not in the source text."
-            ),
+        resp = chat_completion_with_meta(
+            system=_load_prompt("script_refine.txt"),
             user=prompt,
-            model=model,
+            stage="refine",
             temperature=0.3,
             timeout=timeout_sec,
         )
     except Exception as exc:
         raise RuntimeError(_normalize_groq_error(exc)) from exc
 
-    if not content:
+    if not resp.text:
         raise RuntimeError("LLM returned empty content.")
 
-    refined_script = _parse_script_json(content)
+    refined_script = _parse_script_json(resp.text)
     _validate_script_shape(refined_script)
 
     return {
         "script": refined_script,
         "meta": {
-            "provider": "groq+gemini-fallback",
-            "model": model,
+            "provider": resp.provider,
+            "model": resp.model,
             "prompt_version": prompt_version,
             "prompt_mode": prompt_mode,
             "target_blocks": max(1, int(target_blocks)),

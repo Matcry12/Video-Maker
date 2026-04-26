@@ -33,6 +33,7 @@ from .content_sources.script_lint import lint_script
 from .content_sources import ranked_items_to_facts
 from .content_sources.wikipedia_source import _split_sentences
 from .manager import VideoManager, PROJECT_ROOT, OUTPUT_DIR, Profile
+from .prompts import validate_all as _validate_prompts
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +67,64 @@ app = Flask(
     template_folder=str(PROJECT_ROOT / "templates"),
     static_folder=str(PROJECT_ROOT / "static"),
 )
+_validate_prompts()
 
 # Global state
 jobs = {}  # job_id -> {status, progress, output, error}
+_trending_cache: dict = {}   # {"topics": [...], "fetched_at": float}
+_TRENDING_CACHE_TTL = 1800   # 30 minutes
+_TRENDING_HISTORY_FILE = PROJECT_ROOT / ".omc" / "trending_history.json"
+
+
+def _load_trending_history() -> list[dict]:
+    try:
+        if _TRENDING_HISTORY_FILE.exists():
+            return json.loads(_TRENDING_HISTORY_FILE.read_text(encoding="utf-8")).get("topics", [])
+    except Exception:
+        pass
+    return []
+
+
+def _save_trending_history_file(topics: list[dict]) -> None:
+    try:
+        _TRENDING_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _TRENDING_HISTORY_FILE.write_text(
+            json.dumps({"topics": topics}, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except Exception:
+        pass
+
+
+def _upsert_trending_history(new_topics: list[dict], category: str) -> None:
+    import hashlib as _hashlib
+    history = _load_trending_history()
+    existing = {t["title"].lower().strip() for t in history}
+    now = time.time()
+    for t in new_topics:
+        title = (t.get("title") or "").strip()
+        if title.lower() not in existing:
+            entry = dict(t)
+            entry["id"] = _hashlib.md5(title.encode()).hexdigest()[:12]
+            entry["category"] = category
+            entry["saved_at"] = now
+            entry["used"] = False
+            entry["used_at"] = None
+            entry["job_id"] = None
+            history.insert(0, entry)
+            existing.add(title.lower())
+    _save_trending_history_file(history[:200])
+
+
+def _mark_topic_used(title: str, job_id: str) -> None:
+    history = _load_trending_history()
+    norm = title.lower().strip()
+    for entry in history:
+        if (entry.get("title") or "").lower().strip() == norm:
+            entry["used"] = True
+            entry["used_at"] = time.time()
+            entry["job_id"] = job_id
+            break
+    _save_trending_history_file(history)
 CONTENT_BANK_STORE = ContentBankStore()
 
 VOICES = [
@@ -337,6 +393,18 @@ def index():
         except Exception:
             logger.exception("Failed to load subtitle presets from profile")
 
+    # Skills for the UI skill selector (excluding the _default fallback)
+    try:
+        from .agent.skill_selector import load_skills
+        skills = [
+            {"id": s["skill_id"], "name": s.get("name", s["skill_id"])}
+            for s in load_skills()
+            if s.get("skill_id") and s["skill_id"] != "_default"
+        ]
+    except Exception:
+        logger.exception("Failed to load skills for UI")
+        skills = []
+
     return render_template(
         "index.html",
         voices=VOICES,
@@ -345,6 +413,7 @@ def index():
         subtitle_presets=subtitle_presets,
         default_subtitle_preset=default_subtitle_preset,
         default_subtitle_alignment_mode=default_subtitle_alignment_mode,
+        skills=skills,
     )
 
 
@@ -930,10 +999,11 @@ def fetch_content():
             or "gemma4:e2b"
         )
     else:
+        from .agent_config import resolve_stage
         interest_model = (
             os.getenv("GROQ_INTEREST_MODEL", "").strip()
             or os.getenv("GROQ_MODEL", "").strip()
-            or "llama-3.1-8b-instant"
+            or resolve_stage("interest_rank").groq_model
         )
     ranking_meta["model"] = interest_model
 
@@ -1139,10 +1209,9 @@ def handle_content_draft():
                 extraction_result = extract_source_units_from_draft(source_draft, keep_top_k=24)
                 top_units = extraction_result.get("top_units") or []
                 if top_units:
-                    interest_model = os.getenv("GROQ_INTEREST_MODEL") or os.getenv("GROQ_MODEL") or "llama-3.1-8b-instant"
                     rank_candidates_list = to_rank_candidates(top_units)
                     ranking_result = rank_interest_candidates(
-                        rank_candidates_list, model=interest_model, language=language,
+                        rank_candidates_list, stage="interest_rank", language=language,
                     )
                     ranked_items = ranking_result.get("items") or []
             except Exception as exc:
@@ -1656,11 +1725,10 @@ def auto_pipeline():
     ranked_items = []
     rank_candidates_list = []
     if top_units:
-        interest_model = os.getenv("GROQ_INTEREST_MODEL") or os.getenv("GROQ_MODEL") or "llama-3.1-8b-instant"
         try:
             rank_candidates_list = to_rank_candidates(top_units)
             ranking_result = rank_interest_candidates(
-                rank_candidates_list, model=interest_model, language=language,
+                rank_candidates_list, stage="interest_rank", language=language,
             )
             ranked_items = ranking_result.get("items") or []
         except Exception as exc:
@@ -1767,6 +1835,9 @@ def agent_run():
         target_blocks=int(data["target_blocks"]) if data.get("target_blocks") else None,
         style=data.get("style") or None,
         voice=data.get("voice") or None,
+        bgm_mood=data.get("bgm_mood") or None,
+        skill_id=data.get("skill_id") or None,
+        subtitle_preset=data.get("subtitle_preset") or None,
     )
 
     job_id = f"agent_{int(time.time())}_{hash(prompt) % 10000:04d}"
@@ -1837,6 +1908,144 @@ def agent_run():
         "job_id": job_id,
         "message": f"Agent started for: {prompt[:100]}",
     })
+
+
+@app.route("/api/trending")
+def get_trending():
+    category = str(request.args.get("category") or "anime").strip().lower()
+    limit_raw = request.args.get("limit", "10")
+    try:
+        limit = max(1, min(20, int(limit_raw)))
+    except (TypeError, ValueError):
+        limit = 10
+
+    # Check cache
+    cached = _trending_cache.get(category)
+    now = time.time()
+    if cached and (now - cached.get("fetched_at", 0)) < _TRENDING_CACHE_TTL:
+        return jsonify({
+            "topics": cached["topics"],
+            "fetched_at": datetime.fromtimestamp(cached["fetched_at"], tz=timezone.utc).isoformat(),
+            "cache_expires_at": datetime.fromtimestamp(cached["fetched_at"] + _TRENDING_CACHE_TTL, tz=timezone.utc).isoformat(),
+            "from_cache": True,
+        })
+
+    # Fetch fresh
+    try:
+        from .agent.trend_agent import fetch_trending_topics
+        topics = fetch_trending_topics(category=category, limit=limit)
+        topics_payload = [t.model_dump() for t in topics]
+    except Exception as exc:
+        logger.exception("Trending fetch failed")
+        return jsonify({"topics": [], "error": str(exc), "from_cache": False})
+
+    _trending_cache[category] = {"topics": topics_payload, "fetched_at": now}
+    _upsert_trending_history(topics_payload, category)
+    return jsonify({
+        "topics": topics_payload[:limit],
+        "fetched_at": datetime.fromtimestamp(now, tz=timezone.utc).isoformat(),
+        "cache_expires_at": datetime.fromtimestamp(now + _TRENDING_CACHE_TTL, tz=timezone.utc).isoformat(),
+        "from_cache": False,
+    })
+
+
+@app.route("/api/trending/generate", methods=["POST"])
+def trending_generate():
+    data = request.get_json()
+    if not isinstance(data, dict):
+        return api_error("Request body must be JSON.", code="INVALID_REQUEST_JSON", status=400)
+
+    video_angle = str(data.get("video_angle") or data.get("title") or "").strip()
+    if not video_angle:
+        return api_error("video_angle is required.", code="VIDEO_ANGLE_REQUIRED", status=400)
+
+    skill_id = str(data.get("skill_id") or "").strip() or None
+    search_queries = data.get("search_queries") or []
+    language = str(data.get("language") or "en-US").strip() or "en-US"
+
+    from .agent.models import AgentConfig
+    user_config = AgentConfig(
+        skill_id=skill_id,
+        image_display=data.get("image_display") or None,
+        voice=data.get("voice") or None,
+        bgm_mood=data.get("bgm_mood") or None,
+    )
+
+    # Build prompt: pass the angle directly so plan_agent doesn't need to re-plan
+    prompt = video_angle
+    topic_title = str(data.get("title") or video_angle).strip()
+    job_id = f"trend_{int(time.time())}_{hash(video_angle) % 10000:04d}"
+    _mark_topic_used(topic_title, job_id)
+    jobs[job_id] = {
+        "status": "starting",
+        "stage": "plan",
+        "progress": "Starting trend video...",
+        "current_block": None,
+        "total_blocks": None,
+        "meta": {"pipeline": "trending", "video_angle": video_angle[:200], "skill_id": skill_id},
+        "fact_ids": [],
+        "output": None,
+        "error": None,
+    }
+
+    def run_trend_job():
+        from .agent import VideoAgent
+        from .agent.models import AgentConfig, AgentPlan
+
+        def on_progress(event: dict):
+            job = jobs.get(job_id)
+            if not job:
+                return
+            update: dict = {
+                "status": "processing",
+                "stage": event.get("phase") or event.get("stage", "processing"),
+                "progress": event.get("message", "Processing..."),
+                "current_block": event.get("current_block"),
+                "total_blocks": event.get("total_blocks"),
+            }
+            if event.get("yes_count") is not None:
+                update["yes_count"] = event["yes_count"]
+                update["qa_passed"] = event.get("passed")
+            job.update(update)
+
+        agent = VideoAgent(progress_callback=on_progress)
+        result = agent.run(prompt, user_config=user_config)
+
+        job = jobs.get(job_id)
+        if not job:
+            return
+        if result.success:
+            job.update({
+                "status": "done", "stage": "done",
+                "progress": "Video generation complete!",
+                "output": result.video_path,
+            })
+        else:
+            job.update({
+                "status": "error", "stage": "failed",
+                "progress": result.error or "Trend pipeline failed.",
+                "error": result.error,
+            })
+
+    thread = threading.Thread(target=run_trend_job, daemon=True)
+    thread.start()
+
+    return jsonify({"ok": True, "job_id": job_id, "message": f"Trend video started: {video_angle[:80]}"})
+
+
+@app.route("/api/trending/history")
+def get_trending_history():
+    history = _load_trending_history()
+    category = request.args.get("category", "").strip().lower()
+    if category:
+        history = [t for t in history if t.get("category", "") == category]
+    return jsonify({"topics": history, "total": len(history)})
+
+
+@app.route("/api/trending/history/clear", methods=["POST"])
+def clear_trending_history():
+    _save_trending_history_file([])
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":

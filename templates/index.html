@@ -6,7 +6,7 @@
     <title>Video Maker</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
@@ -39,60 +39,209 @@
         </div>
 
         <div id="workspaceAgent" class="workspace-screen" hidden>
-            <div class="agent-mode-panel">
-                <h2 class="agent-mode-title">Agent Mode</h2>
-                <p class="agent-mode-desc">Describe the video you want and the agent will research, write, and render it autonomously.</p>
-                <div class="agent-form">
-                    <label for="agentPrompt" class="agent-label">Prompt</label>
-                    <textarea id="agentPrompt" class="agent-textarea" rows="4" placeholder="Make a video about the Chernobyl disaster, dramatic style..."></textarea>
-                    <div class="agent-options">
-                        <div class="agent-option">
-                            <label for="agentStyle" class="agent-label">Style</label>
-                            <select id="agentStyle" class="agent-select">
-                                <option value="" selected>Auto</option>
-                                <option value="dramatic">Dramatic</option>
-                                <option value="educational">Educational</option>
-                                <option value="cinematic">Cinematic</option>
-                                <option value="energetic">Energetic</option>
-                            </select>
+            <div class="agent-studio">
+
+                <!-- TRENDING NOW -->
+                <section class="studio-section">
+                    <div class="studio-section-header">
+                        <div class="studio-section-label">
+                            <span class="studio-section-dot is-live"></span>
+                            TRENDING NOW
                         </div>
-                        <div class="agent-option">
-                            <label for="agentImageDisplay" class="agent-label">Images</label>
-                            <select id="agentImageDisplay" class="agent-select">
-                                <option value="" selected>Auto</option>
-                                <option value="popup">Popup</option>
-                                <option value="background">Background</option>
+                        <div class="studio-trending-controls">
+                            <select id="trendCategory" class="studio-input studio-input-sm">
+                                <option value="anime">Anime</option>
+                                <option value="gaming">Gaming</option>
+                                <option value="tech">Tech</option>
+                                <option value="lore">Lore</option>
+                                <option value="drama">Drama</option>
                             </select>
+                            <div class="trend-view-toggle">
+                                <button id="trendViewLive" class="trend-toggle-btn is-active" onclick="switchTrendView('live')">Live</button>
+                                <button id="trendViewHistory" class="trend-toggle-btn" onclick="switchTrendView('history')">History <span id="trendHistoryCount" class="trend-history-badge" style="display:none"></span></button>
+                            </div>
+                            <button id="trendRefreshBtn" class="studio-btn-ghost studio-btn-sm" onclick="loadTrending(true)">
+                                <svg id="trendRefreshIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                                <svg id="trendSpinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                                <span id="trendRefreshLabel">Refresh</span>
+                            </button>
                         </div>
-                        <div class="agent-option">
-                            <label for="agentVoice" class="agent-label">Voice</label>
-                            <select id="agentVoice" class="agent-select">
-                                <option value="" selected>Auto (by language)</option>
-                            </select>
+                        <div id="trendStatusBar" style="display:none;font-size:0.72rem;color:var(--text-muted,#666);padding:0.15rem 0.1rem 0;"></div>
+                    </div>
+                    <div id="trendingCards" class="trending-cards-row">
+                        <!-- cards injected by JS -->
+                        <div class="trend-skeleton"></div>
+                        <div class="trend-skeleton"></div>
+                        <div class="trend-skeleton"></div>
+                        <div class="trend-skeleton"></div>
+                    </div>
+                </section>
+
+                <!-- PROMPT -->
+                <section class="studio-section">
+                    <div class="studio-section-label">PROMPT</div>
+                    <div class="prompt-wrap">
+                        <textarea id="agentPrompt" class="studio-textarea" rows="4"
+                            placeholder="Describe the video you want — topic, angle, tone. The agent will research, write, and render it autonomously."></textarea>
+                        <span class="prompt-char-count" id="promptCharCount">0</span>
+                    </div>
+                </section>
+
+                <!-- CONFIG GRID -->
+                <section class="studio-section">
+                    <div class="studio-section-label">CONFIGURATION</div>
+                    <div class="config-grid">
+                        <div class="config-col">
+                            <div class="config-field">
+                                <label class="config-label" for="agentSkill">SKILL</label>
+                                <select id="agentSkill" class="studio-input">
+                                    <option value="" selected>Auto</option>
+                                </select>
+                            </div>
+                            <div class="config-field">
+                                <label class="config-label" for="agentStyle">STYLE</label>
+                                <select id="agentStyle" class="studio-input">
+                                    <option value="" selected>Auto</option>
+                                    <option value="dramatic">Dramatic</option>
+                                    <option value="educational">Educational</option>
+                                    <option value="cinematic">Cinematic</option>
+                                    <option value="energetic">Energetic</option>
+                                </select>
+                            </div>
+                            <div class="config-field">
+                                <label class="config-label" for="agentLanguage">LANGUAGE</label>
+                                <select id="agentLanguage" class="studio-input">
+                                    <option value="en" selected>English</option>
+                                    <option value="vi">Vietnamese</option>
+                                    <option value="ja">Japanese</option>
+                                    <option value="ko">Korean</option>
+                                    <option value="zh">Chinese</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="config-col">
+                            <div class="config-field">
+                                <label class="config-label" for="agentVoice">VOICE</label>
+                                <select id="agentVoice" class="studio-input">
+                                    <option value="" selected>Auto (by language)</option>
+                                </select>
+                            </div>
+                            <div class="config-field">
+                                <label class="config-label" for="agentBgmMood">BGM MOOD</label>
+                                <select id="agentBgmMood" class="studio-input">
+                                    <option value="" selected>Auto</option>
+                                    <option value="intense">Intense</option>
+                                    <option value="calm">Calm</option>
+                                    <option value="mystery">Mystery</option>
+                                    <option value="epic">Epic</option>
+                                    <option value="emotional">Emotional</option>
+                                </select>
+                            </div>
+                            <div class="config-field">
+                                <label class="config-label" for="agentSubtitlePreset">SUBTITLES</label>
+                                <select id="agentSubtitlePreset" class="studio-input">
+                                    <option value="minimal" selected>Minimal</option>
+                                    <option value="energetic">Energetic</option>
+                                    <option value="cinematic">Cinematic</option>
+                                </select>
+                            </div>
+                            <div class="config-field config-field-row">
+                                <div style="flex:1">
+                                    <label class="config-label" for="agentTargetBlocks">BLOCKS</label>
+                                    <input id="agentTargetBlocks" class="studio-input" type="number" min="3" max="10" placeholder="Auto">
+                                </div>
+                                <div style="flex:1">
+                                    <label class="config-label" for="agentImageDisplay">IMAGES</label>
+                                    <select id="agentImageDisplay" class="studio-input">
+                                        <option value="" selected>Auto</option>
+                                        <option value="popup">Popup</option>
+                                        <option value="background">Background</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <button class="btn-primary agent-run-btn" id="agentRunBtn" onclick="runAgent()">Generate Video</button>
-                </div>
-                <div id="agentProgress" class="agent-progress" hidden>
-                    <div class="agent-phase-steps">
-                        <span class="agent-step" data-phase="plan">Plan</span>
-                        <span class="agent-step-arrow">&rarr;</span>
-                        <span class="agent-step" data-phase="research">Research</span>
-                        <span class="agent-step-arrow">&rarr;</span>
-                        <span class="agent-step" data-phase="script">Script</span>
-                        <span class="agent-step-arrow">&rarr;</span>
-                        <span class="agent-step" data-phase="quality_gate">Quality</span>
-                        <span class="agent-step-arrow">&rarr;</span>
-                        <span class="agent-step" data-phase="image">Images</span>
-                        <span class="agent-step-arrow">&rarr;</span>
-                        <span class="agent-step" data-phase="editor">Render</span>
+                </section>
+
+                <!-- ADVANCED -->
+                <details class="studio-advanced">
+                    <summary class="studio-advanced-summary">
+                        <span class="config-label">ADVANCED</span>
+                        <svg class="adv-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </summary>
+                    <div class="adv-grid">
+                        <div class="config-field">
+                            <label class="config-label" for="agentMaxDdg">MAX DDG RESULTS</label>
+                            <input id="agentMaxDdg" class="studio-input" type="number" min="1" max="20" placeholder="8">
+                        </div>
+                        <div class="config-field">
+                            <label class="config-label" for="agentMaxCrawl">MAX CRAWL PAGES</label>
+                            <input id="agentMaxCrawl" class="studio-input" type="number" min="1" max="20" placeholder="6">
+                        </div>
+                        <div class="config-field">
+                            <label class="config-label" for="agentMaxFacts">MAX FACTS</label>
+                            <input id="agentMaxFacts" class="studio-input" type="number" min="5" max="60" placeholder="30">
+                        </div>
                     </div>
-                    <div id="agentStatusMsg" class="agent-status-msg"></div>
+                </details>
+
+                <!-- RUN BUTTON -->
+                <button class="studio-run-btn" id="agentRunBtn" onclick="runAgent()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    GENERATE VIDEO
+                    <svg class="run-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </button>
+
+                <!-- PIPELINE PROGRESS -->
+                <div id="agentProgress" class="pipeline-progress" hidden>
+                    <div class="pipeline-track">
+                        <div class="pipeline-step" data-phase="plan">
+                            <div class="pipeline-step-num">01</div>
+                            <div class="pipeline-step-label">PLAN</div>
+                            <div class="pipeline-step-bar"></div>
+                        </div>
+                        <div class="pipeline-connector"></div>
+                        <div class="pipeline-step" data-phase="research">
+                            <div class="pipeline-step-num">02</div>
+                            <div class="pipeline-step-label">RESEARCH</div>
+                            <div class="pipeline-step-bar"></div>
+                        </div>
+                        <div class="pipeline-connector"></div>
+                        <div class="pipeline-step" data-phase="script">
+                            <div class="pipeline-step-num">03</div>
+                            <div class="pipeline-step-label">SCRIPT</div>
+                            <div class="pipeline-step-bar"></div>
+                        </div>
+                        <div class="pipeline-connector"></div>
+                        <div class="pipeline-step" data-phase="quality_gate">
+                            <div class="pipeline-step-num">04</div>
+                            <div class="pipeline-step-label">QA</div>
+                            <div class="pipeline-step-bar"></div>
+                        </div>
+                        <div class="pipeline-connector"></div>
+                        <div class="pipeline-step" data-phase="image">
+                            <div class="pipeline-step-num">05</div>
+                            <div class="pipeline-step-label">IMAGES</div>
+                            <div class="pipeline-step-bar"></div>
+                        </div>
+                        <div class="pipeline-connector"></div>
+                        <div class="pipeline-step" data-phase="editor">
+                            <div class="pipeline-step-num">06</div>
+                            <div class="pipeline-step-label">RENDER</div>
+                            <div class="pipeline-step-bar"></div>
+                        </div>
+                    </div>
+                    <div id="agentStatusMsg" class="pipeline-status-msg"></div>
                 </div>
+
                 <div id="agentStatus" class="agent-status" hidden></div>
+
+                <!-- VIDEO PREVIEW -->
                 <div id="agentVideoWrap" class="agent-video-wrap" hidden>
+                    <div class="video-preview-label">OUTPUT</div>
                     <video id="agentPreview" class="agent-preview" controls></video>
                 </div>
+
             </div>
         </div>
         {% include "partials/crawl_screen.html" %}
@@ -107,6 +256,7 @@
             DEFAULT_SUBTITLE_PRESET: {{ default_subtitle_preset | tojson }},
             DEFAULT_SUBTITLE_ALIGNMENT_MODE: {{ default_subtitle_alignment_mode | tojson }},
             INITIAL_SCRIPTS: {{ scripts | tojson }},
+            SKILLS: {{ skills | tojson }},
         };
     </script>
     <script src="{{ url_for('static', filename='js/app_state.js') }}"></script>
@@ -130,24 +280,218 @@
                 failed: 'Failed',
             };
 
-            // Populate voice dropdown from bootstrap
+            // ── Voice dropdown ──
             function initAgentVoices() {
                 const sel = document.getElementById('agentVoice');
                 if (!sel || !window.APP_BOOTSTRAP?.VOICES) return;
-                const voices = window.APP_BOOTSTRAP.VOICES;
-                for (const [name, id] of Object.entries(voices)) {
+                for (const [name, id] of Object.entries(window.APP_BOOTSTRAP.VOICES)) {
                     const opt = document.createElement('option');
                     opt.value = name;
                     opt.textContent = name + ' (' + (id.includes('vi-VN') ? 'Vietnamese' : 'English') + ')';
                     sel.appendChild(opt);
                 }
             }
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initAgentVoices);
-            } else {
-                initAgentVoices();
+
+            // ── Skill dropdown ──
+            function initAgentSkills() {
+                const sel = document.getElementById('agentSkill');
+                if (!sel || !Array.isArray(window.APP_BOOTSTRAP?.SKILLS)) return;
+                for (const skill of window.APP_BOOTSTRAP.SKILLS) {
+                    const opt = document.createElement('option');
+                    opt.value = skill.id;
+                    opt.textContent = skill.name || skill.id;
+                    sel.appendChild(opt);
+                }
             }
 
+            // ── Prompt char counter ──
+            function initCharCounter() {
+                const ta = document.getElementById('agentPrompt');
+                const counter = document.getElementById('promptCharCount');
+                if (!ta || !counter) return;
+                const update = () => { counter.textContent = ta.value.length; };
+                ta.addEventListener('input', update);
+                update();
+            }
+
+            // ── Trending cards ──
+            window.loadTrending = async function (forceRefresh) {
+                const container = document.getElementById('trendingCards');
+                const category = document.getElementById('trendCategory')?.value || 'anime';
+                const btn = document.getElementById('trendRefreshBtn');
+                const icon = document.getElementById('trendRefreshIcon');
+                const spinner = document.getElementById('trendSpinner');
+                const label = document.getElementById('trendRefreshLabel');
+                const statusBar = document.getElementById('trendStatusBar');
+                if (!container) return;
+
+                // Loading state
+                if (btn) btn.disabled = true;
+                if (icon) icon.style.display = 'none';
+                if (spinner) { spinner.style.display = 'inline'; }
+                if (label) label.textContent = 'Fetching…';
+                if (statusBar) { statusBar.style.display = 'block'; statusBar.textContent = 'Fetching trending topics…'; }
+                container.innerHTML = Array(4).fill('<div class="trend-skeleton"></div>').join('');
+
+                const t0 = Date.now();
+                try {
+                    const url = '/api/trending?category=' + encodeURIComponent(category) + '&limit=8'
+                        + (forceRefresh ? '&refresh=1' : '');
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    const topics = data.topics || [];
+                    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+
+                    if (!topics.length) {
+                        container.innerHTML = '<div class="trend-empty">No trending topics found.</div>';
+                        if (statusBar) statusBar.textContent = 'No results — try a different category.';
+                        return;
+                    }
+
+                    container.innerHTML = '';
+                    topics.forEach(function (topic) {
+                        const urgencyClass = (topic.urgency_score >= 0.7) ? 'is-hot' : '';
+                        const card = document.createElement('div');
+                        card.className = 'trend-card';
+                        card.innerHTML =
+                            '<div class="trend-card-urgency ' + urgencyClass + '"></div>' +
+                            '<div class="trend-card-title">' + escHtml(topic.title || '') + '</div>' +
+                            (topic.trending_reason ? '<div class="trend-card-reason">' + escHtml(topic.trending_reason) + '</div>' : '') +
+                            '<div class="trend-card-angle">' + escHtml(topic.video_angle || '') + '</div>' +
+                            (topic.hook_idea ? '<div class="trend-card-hook">' + escHtml(topic.hook_idea) + '</div>' : '') +
+                            '<span class="trend-card-skill">' + escHtml(topic.skill_id || '') + '</span>';
+                        card.addEventListener('click', function () { fillFromTrend(topic); });
+                        container.appendChild(card);
+                    });
+                    const now = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+                    if (statusBar) statusBar.textContent = topics.length + ' topics loaded in ' + elapsed + 's · updated ' + now;
+                    // Refresh history badge count
+                    fetch('/api/trending/history').then(function(r){ return r.json(); }).then(function(d){
+                        const badge = document.getElementById('trendHistoryCount');
+                        if (badge && d.total > 0) { badge.textContent = d.total; badge.style.display = 'inline'; }
+                    }).catch(function(){});
+                } catch (e) {
+                    container.innerHTML = '<div class="trend-empty">Could not load trending topics.</div>';
+                    if (statusBar) statusBar.textContent = 'Failed to load — check server logs.';
+                } finally {
+                    if (btn) btn.disabled = false;
+                    if (icon) icon.style.display = 'inline';
+                    if (spinner) spinner.style.display = 'none';
+                    if (label) label.textContent = 'Refresh';
+                }
+            };
+
+            window._activeTrendTopic = null;
+
+            window.fillFromTrend = function (topic) {
+                const ta = document.getElementById('agentPrompt');
+                if (ta) {
+                    const angle = topic.video_angle || '';
+                    const title = topic.title || '';
+                    ta.value = title && angle && !angle.toLowerCase().includes(title.toLowerCase().slice(0, 10))
+                        ? title + ' — ' + angle
+                        : (angle || title);
+                    ta.dispatchEvent(new Event('input'));
+                    // Clear active topic if user manually edits the prompt
+                    ta.addEventListener('input', function clearTrend() {
+                        window._activeTrendTopic = null;
+                        ta.removeEventListener('input', clearTrend);
+                    }, { once: true });
+                }
+                const skillSel = document.getElementById('agentSkill');
+                if (skillSel && topic.skill_id) {
+                    const opt = skillSel.querySelector('option[value="' + topic.skill_id + '"]');
+                    if (opt) skillSel.value = topic.skill_id;
+                }
+                window._activeTrendTopic = topic;
+                // Show indicator that trend topic is active
+                const statusBar = document.getElementById('trendStatusBar');
+                if (statusBar) { statusBar.style.display = 'block'; statusBar.textContent = 'Selected: ' + (topic.title || topic.video_angle) + ' — will use pre-built search queries'; }
+            };
+
+            function escHtml(s) {
+                return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            }
+
+            // ── View toggle (live / history) ──
+            var _trendView = 'live';
+            window.switchTrendView = function (view) {
+                _trendView = view;
+                document.getElementById('trendViewLive').classList.toggle('is-active', view === 'live');
+                document.getElementById('trendViewHistory').classList.toggle('is-active', view === 'history');
+                const refreshBtn = document.getElementById('trendRefreshBtn');
+                if (refreshBtn) refreshBtn.style.display = view === 'live' ? '' : 'none';
+                if (view === 'history') loadTrendingHistory();
+                else loadTrending(false);
+            };
+
+            window.loadTrendingHistory = async function () {
+                const container = document.getElementById('trendingCards');
+                const statusBar = document.getElementById('trendStatusBar');
+                const category = document.getElementById('trendCategory')?.value || '';
+                if (!container) return;
+                container.innerHTML = Array(4).fill('<div class="trend-skeleton"></div>').join('');
+                try {
+                    const url = '/api/trending/history' + (category ? '?category=' + encodeURIComponent(category) : '');
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    const topics = data.topics || [];
+                    if (!topics.length) {
+                        container.innerHTML = '<div class="trend-empty">No saved topics yet — fetch trending to populate history.</div>';
+                        if (statusBar) { statusBar.style.display = 'block'; statusBar.textContent = '0 saved topics'; }
+                        return;
+                    }
+                    container.innerHTML = '';
+                    topics.forEach(function (topic) {
+                        const card = document.createElement('div');
+                        const isUsed = !!topic.used;
+                        card.className = 'trend-card' + (isUsed ? ' is-used' : '');
+                        const usedAt = topic.used_at ? new Date(topic.used_at * 1000).toLocaleDateString() : '';
+                        card.innerHTML =
+                            '<div class="trend-card-urgency"></div>' +
+                            (isUsed ? '<span class="trend-used-badge">Used ' + usedAt + '</span>' : '') +
+                            '<div class="trend-card-title">' + escHtml(topic.title || '') + '</div>' +
+                            (topic.trending_reason ? '<div class="trend-card-reason">' + escHtml(topic.trending_reason) + '</div>' : '') +
+                            '<div class="trend-card-angle">' + escHtml(topic.video_angle || '') + '</div>' +
+                            '<span class="trend-card-skill">' + escHtml(topic.skill_id || '') + '</span>' +
+                            '<span class="trend-card-category">' + escHtml(topic.category || '') + '</span>';
+                        card.addEventListener('click', function () { fillFromTrend(topic); });
+                        container.appendChild(card);
+                    });
+                    const unused = topics.filter(function (t) { return !t.used; }).length;
+                    if (statusBar) { statusBar.style.display = 'block'; statusBar.textContent = topics.length + ' saved · ' + unused + ' unused · ' + (topics.length - unused) + ' used'; }
+                    const badge = document.getElementById('trendHistoryCount');
+                    if (badge) { badge.textContent = topics.length; badge.style.display = 'inline'; }
+                } catch (e) {
+                    container.innerHTML = '<div class="trend-empty">Could not load history.</div>';
+                }
+            };
+
+            // ── Category change triggers reload ──
+            function initTrendCategory() {
+                const sel = document.getElementById('trendCategory');
+                if (sel) sel.addEventListener('change', function () {
+                    if (_trendView === 'history') loadTrendingHistory();
+                    else loadTrending(false);
+                });
+            }
+
+            // ── Init on DOM ready ──
+            function onReady() {
+                initAgentVoices();
+                initAgentSkills();
+                initCharCounter();
+                initTrendCategory();
+                loadTrending(false);
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', onReady);
+            } else {
+                onReady();
+            }
+
+            // ── Status / phase helpers ──
             function agentSetStatus(msg, type) {
                 const el = document.getElementById('agentStatus');
                 if (!el) return;
@@ -156,55 +500,68 @@
                 el.className = 'agent-status agent-status-' + (type || 'processing');
             }
 
-            function agentSetPhase(phase) {
+            function agentSetPhase(phase, jobData) {
                 const progressEl = document.getElementById('agentProgress');
-                const msgEl = document.getElementById('agentStatusMsg');
                 if (!progressEl) return;
                 progressEl.hidden = false;
-
-                // Highlight active step
-                progressEl.querySelectorAll('.agent-step').forEach(step => {
+                const order = ['plan', 'research', 'script', 'quality_gate', 'image', 'editor'];
+                const currentIdx = order.indexOf(phase);
+                progressEl.querySelectorAll('.pipeline-step').forEach(function (step) {
                     const stepPhase = step.dataset.phase;
-                    step.classList.remove('is-active', 'is-done');
-                    const order = ['plan', 'research', 'script', 'quality_gate', 'image', 'editor'];
-                    const currentIdx = order.indexOf(phase);
                     const stepIdx = order.indexOf(stepPhase);
+                    step.classList.remove('is-active', 'is-done', 'qa-pass', 'qa-warn', 'qa-fail');
                     if (stepIdx < currentIdx) step.classList.add('is-done');
                     if (stepIdx === currentIdx) step.classList.add('is-active');
+                    // QA score label
+                    if (stepPhase === 'quality_gate') {
+                        const lbl = step.querySelector('.pipeline-step-label');
+                        if (lbl && jobData && jobData.yes_count != null) {
+                            lbl.textContent = 'QA ' + jobData.yes_count + '/5';
+                            step.classList.remove('qa-pass', 'qa-warn', 'qa-fail');
+                            if (jobData.yes_count >= 4) step.classList.add('qa-pass');
+                            else if (jobData.yes_count >= 3) step.classList.add('qa-warn');
+                            else step.classList.add('qa-fail');
+                        } else if (lbl && jobData && jobData.yes_count == null && jobData.stage === 'quality_gate') {
+                            lbl.textContent = 'QA —';
+                        }
+                    }
                 });
             }
 
             function agentSetRunning(running) {
                 const btn = document.getElementById('agentRunBtn');
-                if (btn) {
-                    btn.disabled = running;
-                    btn.textContent = running ? 'Running...' : 'Generate Video';
+                if (!btn) return;
+                btn.disabled = running;
+                if (running) {
+                    btn.innerHTML =
+                        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>' +
+                        'RUNNING...';
+                } else {
+                    btn.innerHTML =
+                        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>' +
+                        'GENERATE VIDEO' +
+                        '<svg class="run-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
                 }
             }
 
             function agentStopPolling() {
-                if (agentPollTimer) {
-                    clearTimeout(agentPollTimer);
-                    agentPollTimer = null;
-                }
+                if (agentPollTimer) { clearTimeout(agentPollTimer); agentPollTimer = null; }
             }
 
             function agentPollJob(jobId) {
                 agentStopPolling();
-                const poll = async () => {
+                const poll = async function () {
                     try {
                         const job = await fetchApi(
                             '/api/jobs/' + encodeURIComponent(jobId),
                             {},
                             'Failed to fetch job status.'
                         );
-
                         const stage = job.stage || '';
                         const phaseLabel = PHASE_LABELS[stage] || stage;
                         const progress = job.progress || 'Processing...';
                         const blockInfo = (job.current_block != null && job.total_blocks != null)
-                            ? ' (' + job.current_block + '/' + job.total_blocks + ')'
-                            : '';
+                            ? ' (' + job.current_block + '/' + job.total_blocks + ')' : '';
 
                         if (job.status === 'done') {
                             agentSetStatus('Video ready!', 'done');
@@ -222,10 +579,8 @@
                             loadOutputs();
                             return;
                         }
-
                         if (job.status === 'error') {
                             const errMsg = job.error || 'Something went wrong. Check the prompt and try again.';
-                            // Clean up Python traceback for user display
                             const cleanErr = errMsg.split('\n')[0].replace(/^.*Error:\s*/, '');
                             agentSetStatus('Error: ' + cleanErr, 'error');
                             agentSetRunning(false);
@@ -233,8 +588,7 @@
                             if (progressEl) progressEl.hidden = true;
                             return;
                         }
-
-                        agentSetPhase(stage);
+                        agentSetPhase(stage, job);
                         const msgEl = document.getElementById('agentStatusMsg');
                         if (msgEl) msgEl.textContent = progress + blockInfo;
                         agentSetStatus(phaseLabel + ': ' + progress + blockInfo, 'processing');
@@ -249,13 +603,16 @@
 
             window.runAgent = async function () {
                 const prompt = (document.getElementById('agentPrompt')?.value || '').trim();
-                if (!prompt) {
-                    agentSetStatus('Please enter a prompt.', 'error');
-                    return;
-                }
-                const style = document.getElementById('agentStyle')?.value || '';
+                if (!prompt) { agentSetStatus('Please enter a prompt.', 'error'); return; }
+
+                const style        = document.getElementById('agentStyle')?.value || '';
                 const imageDisplay = document.getElementById('agentImageDisplay')?.value || '';
-                const voice = document.getElementById('agentVoice')?.value || '';
+                const voice        = document.getElementById('agentVoice')?.value || '';
+                const skillId      = document.getElementById('agentSkill')?.value || '';
+                const targetBlocks = document.getElementById('agentTargetBlocks')?.value || '';
+                const bgmMood        = document.getElementById('agentBgmMood')?.value || '';
+                const language       = document.getElementById('agentLanguage')?.value || '';
+                const subtitlePreset = document.getElementById('agentSubtitlePreset')?.value || '';
 
                 agentStopPolling();
                 agentSetRunning(true);
@@ -266,17 +623,30 @@
                 if (wrap) wrap.hidden = true;
 
                 const body = { prompt };
-                if (style) body.style = style;
+                if (style)        body.style = style;
                 if (imageDisplay) body.image_display = imageDisplay;
-                if (voice) body.voice = voice;
+                if (voice)        body.voice = voice;
+                if (skillId)      body.skill_id = skillId;
+                if (targetBlocks) body.target_blocks = parseInt(targetBlocks, 10);
+                if (bgmMood)        body.bgm_mood = bgmMood;
+                if (language)       body.language = language;
+                if (subtitlePreset) body.subtitle_preset = subtitlePreset;
 
                 try {
-                    const result = await fetchApi('/api/agent/run', {
+                    let endpoint = '/api/agent/run';
+                    if (window._activeTrendTopic) {
+                        const t = window._activeTrendTopic;
+                        body.title = t.title || '';
+                        body.search_queries = t.search_queries || [];
+                        body.video_angle = t.video_angle || prompt;
+                        endpoint = '/api/trending/generate';
+                        window._activeTrendTopic = null;
+                    }
+                    const result = await fetchApi(endpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(body),
                     }, 'Failed to start agent.');
-
                     agentSetStatus('Planning...', 'processing');
                     agentPollJob(result.job_id);
                 } catch (err) {
@@ -288,132 +658,442 @@
         })();
     </script>
     <style>
-        .agent-mode-panel {
-            max-width: 680px;
-            margin: 2rem auto;
-            padding: 2rem;
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
         }
-        .agent-mode-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 0.4rem;
+
+        /* ── Workspace root ── */
+        #workspaceAgent {
+            background: var(--bg-app);
+            min-height: 100vh;
+            padding: 0;
         }
-        .agent-mode-desc {
-            color: var(--text-muted, #6b7280);
-            margin-bottom: 1.5rem;
-            font-size: 0.9rem;
-        }
-        .agent-form {
+
+        .agent-studio {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
+            gap: 1.25rem;
+            color: var(--text-primary);
         }
-        .agent-label {
-            font-size: 0.85rem;
-            font-weight: 500;
-            margin-bottom: 0.2rem;
-            display: block;
+
+        /* ── Section wrapper ── */
+        .studio-section {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem 1.5rem;
         }
-        .agent-textarea {
-            width: 100%;
-            padding: 0.6rem 0.75rem;
-            border: 1px solid var(--border, #d1d5db);
-            border-radius: 6px;
-            font-family: inherit;
-            font-size: 0.9rem;
-            resize: vertical;
-            background: var(--input-bg, #fff);
-            color: var(--text, #111827);
-            box-sizing: border-box;
-        }
-        .agent-options {
+
+        .studio-section-header {
             display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
         }
-        .agent-option {
-            flex: 1;
-            min-width: 140px;
+
+        .studio-section-label {
+            font-family: var(--font-mono);
+            font-size: var(--font-xs);
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
         }
-        .agent-select {
-            width: 100%;
-            padding: 0.45rem 0.65rem;
-            border: 1px solid var(--border, #d1d5db);
-            border-radius: 6px;
-            font-family: inherit;
-            font-size: 0.875rem;
-            background: var(--input-bg, #fff);
-            color: var(--text, #111827);
+
+        .studio-section-header .studio-section-label { margin-bottom: 0; }
+
+        /* ── Live dot ── */
+        .studio-section-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--text-secondary);
         }
-        .agent-run-btn {
-            align-self: flex-start;
-            margin-top: 0.25rem;
+        .studio-section-dot.is-live {
+            background: var(--accent-primary);
+            box-shadow: 0 0 6px var(--accent-primary);
+            animation: livePulse 2s ease-in-out infinite;
         }
-        .agent-progress {
-            margin-top: 1.25rem;
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.4; }
         }
-        .agent-phase-steps {
+
+        /* ── Trending controls ── */
+        .studio-trending-controls { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+
+        .studio-btn-ghost {
             display: flex;
             align-items: center;
             gap: 0.35rem;
-            flex-wrap: wrap;
-            margin-bottom: 0.75rem;
+            background: transparent;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: var(--font-xs);
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
         }
-        .agent-step {
-            padding: 0.3rem 0.6rem;
-            border-radius: 4px;
-            font-size: 0.78rem;
-            font-weight: 500;
-            background: var(--bg-muted, #f3f4f6);
-            color: var(--text-muted, #6b7280);
-            transition: all 0.2s;
+        .studio-btn-ghost:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
+        .studio-btn-sm { padding: 0.3rem 0.65rem; }
+
+        /* ── Trending cards row ── */
+        .trending-cards-row {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            padding-bottom: 0.25rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-default) transparent;
         }
-        .agent-step.is-active {
-            background: #dbeafe;
-            color: #1d4ed8;
-            font-weight: 600;
+        .trending-cards-row::-webkit-scrollbar { height: 4px; }
+        .trending-cards-row::-webkit-scrollbar-track { background: transparent; }
+        .trending-cards-row::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
+
+        /* ── Trend card ── */
+        .trend-card {
+            flex: 0 0 190px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: 0.9rem 1rem;
+            cursor: pointer;
+            position: relative;
+            transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
         }
-        .agent-step.is-done {
-            background: #dcfce7;
-            color: #15803d;
+        .trend-card:hover {
+            border-color: var(--accent-primary);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(245,158,11,0.12);
         }
-        .agent-step-arrow {
-            color: var(--text-muted, #9ca3af);
-            font-size: 0.75rem;
+        .trend-card-urgency {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            position: absolute;
+            top: 0.85rem; right: 0.85rem;
         }
-        .agent-status-msg {
-            font-size: 0.85rem;
-            color: var(--text-muted, #6b7280);
+        .trend-card-urgency.is-hot {
+            background: var(--accent-primary);
+            box-shadow: 0 0 6px var(--accent-primary);
         }
-        .agent-status {
-            margin-top: 0.75rem;
-            padding: 0.6rem 0.85rem;
-            border-radius: 6px;
-            font-size: 0.875rem;
+        .trend-card-title {
+            font-family: var(--font-display);
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.3;
+            padding-right: 1rem;
         }
-        .agent-status-processing {
-            background: var(--status-processing-bg, #eff6ff);
-            color: var(--status-processing-text, #1d4ed8);
-            border: 1px solid var(--status-processing-border, #bfdbfe);
+        .trend-card-angle {
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
-        .agent-status-done {
-            background: var(--status-done-bg, #f0fdf4);
-            color: var(--status-done-text, #15803d);
-            border: 1px solid var(--status-done-border, #bbf7d0);
+        .trend-card-reason {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--accent-primary);
+            opacity: 0.85;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
-        .agent-status-error {
-            background: var(--status-error-bg, #fef2f2);
-            color: var(--status-error-text, #b91c1c);
-            border: 1px solid var(--status-error-border, #fecaca);
+        .trend-card-hook {
+            font-family: var(--font-mono);
+            font-size: 0.64rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            border-left: 2px solid var(--accent-dim);
+            padding-left: 0.4rem;
         }
-        .agent-video-wrap {
-            margin-top: 1.5rem;
+        .trend-card-skill {
+            display: inline-block;
+            margin-top: 0.2rem;
+            padding: 0.15rem 0.45rem;
+            border-radius: 3px;
+            background: var(--accent-dim);
+            color: var(--accent-primary);
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            letter-spacing: 0.06em;
+            align-self: flex-start;
         }
-        .agent-preview {
+        #trendSpinner { animation: spin 0.8s linear infinite; transform-origin: center; }
+        #trendRefreshBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+        #trendStatusBar { font-family: var(--font-mono); color: var(--text-secondary); padding: 0.2rem 0.25rem 0; }
+        .trend-view-toggle { display: flex; border: 1px solid #3a3a50; border-radius: 6px; overflow: visible; flex-shrink: 0; }
+        .trend-toggle-btn { background: transparent; border: none; color: #aaa; font-family: var(--font-mono); font-size: 0.7rem; padding: 0.25rem 0.7rem; cursor: pointer; transition: background 0.15s, color 0.15s; display: flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+        .trend-toggle-btn.is-active { background: var(--accent-primary, #f59e0b); color: #000; }
+        .trend-toggle-btn:not(.is-active):hover { background: #1e1e28; color: #fff; }
+        .trend-history-badge { background: var(--text-secondary); color: var(--bg-app); border-radius: 99px; font-size: 0.65rem; padding: 0 0.35rem; min-width: 1.1rem; text-align: center; }
+        .trend-card.is-used { opacity: 0.55; }
+        .trend-card.is-used:hover { opacity: 0.8; }
+        .trend-used-badge { display: inline-block; font-family: var(--font-mono); font-size: 0.65rem; color: var(--accent-primary); border: 1px solid var(--accent-primary); border-radius: 4px; padding: 0.05rem 0.35rem; margin-bottom: 0.35rem; }
+        .trend-card-category { display: inline-block; font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-secondary); margin-left: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .trend-empty {
+            font-family: var(--font-mono);
+            font-size: var(--font-xs);
+            color: var(--text-secondary);
+            padding: 1rem 0;
+        }
+
+        /* ── Skeleton loading ── */
+        .trend-skeleton {
+            flex: 0 0 190px;
+            height: 110px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            animation: skeletonPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes skeletonPulse {
+            0%, 100% { opacity: 0.4; }
+            50%       { opacity: 0.85; }
+        }
+
+        /* ── Prompt textarea ── */
+        .prompt-wrap { position: relative; }
+        .studio-textarea {
             width: 100%;
-            border-radius: 8px;
-            background: #000;
+            padding: 0.9rem 1rem 1.6rem;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: var(--font-display);
+            font-size: 0.92rem;
+            line-height: 1.6;
+            resize: vertical;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
         }
+        .studio-textarea::placeholder { color: var(--text-secondary); font-style: italic; }
+        .studio-textarea:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--focus-ring);
+        }
+        .prompt-char-count {
+            position: absolute;
+            bottom: 0.55rem; right: 0.85rem;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        /* ── Config grid ── */
+        .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        @media (max-width: 560px) { .config-grid { grid-template-columns: 1fr; } }
+
+        .config-col { display: flex; flex-direction: column; gap: 0.75rem; }
+        .config-field { display: flex; flex-direction: column; gap: 0.25rem; }
+        .config-field-row { flex-direction: row; gap: 0.75rem; }
+        .config-field-row > div { display: flex; flex-direction: column; gap: 0.25rem; }
+
+        .config-label {
+            font-family: var(--font-mono);
+            font-size: var(--font-xs);
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        /* ── Shared input / select overrides for studio ── */
+        .studio-input {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: var(--font-sm);
+            padding: 0.45rem 0.7rem;
+            width: 100%;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        .studio-input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--focus-ring);
+        }
+        select.studio-input {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6070' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.6rem center;
+            padding-right: 2rem;
+        }
+        .studio-input-sm { padding: 0.28rem 0.6rem; font-size: 0.72rem; }
+        select.studio-input-sm { background-position: right 0.45rem center; padding-right: 1.6rem; }
+
+        /* ── Advanced section ── */
+        .studio-advanced {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 1rem 1.5rem;
+        }
+        .studio-advanced[open] { padding-bottom: 1.25rem; }
+        .studio-advanced-summary {
+            display: flex; align-items: center; gap: 0.6rem;
+            cursor: pointer; user-select: none; list-style: none;
+        }
+        .studio-advanced-summary::-webkit-details-marker { display: none; }
+        .adv-chevron { color: var(--text-secondary); transition: transform 0.2s; margin-left: auto; }
+        .studio-advanced[open] .adv-chevron { transform: rotate(180deg); }
+        .adv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.85rem; margin-top: 1rem; }
+        @media (max-width: 560px) { .adv-grid { grid-template-columns: 1fr; } }
+
+        /* ── Run button ── */
+        .studio-run-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 1rem 1.5rem;
+            background: var(--accent-primary);
+            color: #07070a;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+            box-shadow: 0 4px 20px rgba(245,158,11,0.3);
+        }
+        .studio-run-btn:hover:not(:disabled) {
+            background: var(--accent-secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(245,158,11,0.45);
+        }
+        .studio-run-btn:active:not(:disabled) { transform: translateY(0); }
+        .studio-run-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+        .run-arrow { margin-left: auto; }
+
+        /* ── Pipeline progress ── */
+        .pipeline-progress {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem 1.5rem;
+        }
+        .pipeline-track { display: flex; align-items: flex-start; gap: 0; }
+        .pipeline-connector {
+            flex: 1; height: 1px;
+            background: var(--border-default);
+            margin-top: 1.1rem;
+            transition: background 0.4s;
+        }
+        .pipeline-step {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 0.3rem;
+            min-width: 64px;
+        }
+        .pipeline-step-num {
+            font-family: var(--font-mono);
+            font-size: 0.72rem; font-weight: 500;
+            color: var(--text-secondary);
+            background: var(--bg-panel);
+            border: 1px solid var(--border-default);
+            border-radius: 50%;
+            width: 2rem; height: 2rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s;
+        }
+        .pipeline-step-label {
+            font-family: var(--font-mono);
+            font-size: 0.6rem; letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            transition: color 0.3s;
+        }
+        .pipeline-step-bar {
+            width: 4px; height: 4px;
+            border-radius: 2px; background: transparent;
+            transition: background 0.3s;
+        }
+
+        /* Active step */
+        .pipeline-step.is-active .pipeline-step-num {
+            background: var(--accent-dim);
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            box-shadow: 0 0 12px rgba(245,158,11,0.35);
+            animation: stepPulse 1.2s ease-in-out infinite;
+        }
+        .pipeline-step.is-active .pipeline-step-label { color: var(--accent-primary); }
+        .pipeline-step.is-active .pipeline-step-bar { background: var(--accent-primary); animation: barPulse 1.2s ease-in-out infinite; }
+        @keyframes stepPulse {
+            0%, 100% { box-shadow: 0 0 8px rgba(245,158,11,0.35); }
+            50%       { box-shadow: 0 0 18px rgba(245,158,11,0.6); }
+        }
+        @keyframes barPulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.4; }
+        }
+
+        /* QA score colors */
+        .pipeline-step.qa-pass .pipeline-step-label { color: var(--success-text); }
+        .pipeline-step.qa-warn .pipeline-step-label { color: var(--accent-secondary); }
+        .pipeline-step.qa-fail .pipeline-step-label { color: var(--error-text); }
+
+        /* Done step */
+        .pipeline-step.is-done .pipeline-step-num { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+        .pipeline-step.is-done .pipeline-step-label { color: var(--blue); }
+        .pipeline-step.is-done .pipeline-step-bar { background: var(--blue); }
+        .pipeline-step.is-done + .pipeline-connector { background: var(--blue); }
+
+        .pipeline-status-msg {
+            margin-top: 0.85rem;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* ── Status boxes ── */
+        .agent-status {
+            padding: 0.65rem 1rem;
+            border-radius: var(--radius-md);
+            font-family: var(--font-mono);
+            font-size: var(--font-sm);
+        }
+        .agent-status-processing { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(56,189,248,0.25); }
+        .agent-status-done       { background: var(--success-bg); color: var(--success-text); border: 1px solid var(--success-border); }
+        .agent-status-error      { background: var(--error-bg); color: var(--error-text); border: 1px solid var(--error-border); }
+
+        /* ── Video preview ── */
+        .agent-video-wrap { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
+        .video-preview-label { font-family: var(--font-mono); font-size: var(--font-xs); letter-spacing: 0.12em; color: var(--text-secondary); padding: 0.75rem 1.25rem 0; }
+        .agent-preview { width: 100%; display: block; background: #000; }
     </style>
 </body>
 </html>

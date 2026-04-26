@@ -5,6 +5,7 @@ import re
 from typing import Any, Callable, Optional
 
 from .models import AgentPlan, ScriptResult
+from ..agent_config import load_agent_settings
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,44 @@ _POPUP_CONTENT_SIGNALS = frozenset({
     "billion", "million", "percent", "government", "collapsed", "exploded",
     "investigation", "trial", "scandal", "war", "battle", "crisis",
 })
+
+
+def apply_citation_cleanup(
+    script: dict[str, Any],
+    facts: list[dict],
+    warnings: Optional[list[str]] = None,
+) -> dict[str, Any]:
+    """Strip inline fact markers from visible text and attach citation metadata."""
+    warnings = warnings if warnings is not None else []
+
+    from .script_citations import extract_citations
+
+    valid_ids: set[str] = set()
+    for fact in facts or []:
+        fid = fact.get("fact_id") if isinstance(fact, dict) else None
+        if fid:
+            valid_ids.add(str(fid).upper())
+
+    if not valid_ids:
+        return script
+
+    cleaned_script, citation_map = extract_citations(script, valid_ids)
+    cleaned_script["__citation_map__"] = {
+        "citations": [
+            {"fact_id": c.fact_id, "block_idx": c.block_idx, "sentence_idx": c.sentence_idx}
+            for c in citation_map.citations
+        ],
+        "unused_fact_ids": citation_map.unused_fact_ids,
+        "uncited_sentences": [list(s) for s in citation_map.uncited_sentences],
+        "citation_rate": citation_map.citation_rate,
+    }
+    if citation_map.citation_rate < 0.6:
+        warnings.append(
+            f"Script citation rate low: {citation_map.citation_rate:.0%} "
+            f"({len(citation_map.uncited_sentences)} sentences not grounded)"
+        )
+
+    return cleaned_script
 
 
 def run_script(
@@ -63,7 +102,8 @@ def run_script(
     # --- SELECT SKILL ---
     from .skill_selector import select_skill
 
-    selected_skill = select_skill(plan)
+    forced_skill = plan.user_overrides.skill_id if plan.user_overrides else None
+    selected_skill = select_skill(plan, forced_skill_id=forced_skill)
     _emit("script", f"Using skill: {selected_skill.get('name', 'General')}")
     logger.info("Script skill: %s", selected_skill.get("skill_id", "_default"))
 
@@ -82,9 +122,12 @@ def run_script(
             target_blocks=plan.target_blocks,
             style=style,
             skill=selected_skill,
+            video_goal=plan.user_prompt or plan.topic,
+            must_cover=", ".join(plan.must_cover or []),
         )
         script = writer_result["script"]
         writer_meta = writer_result.get("meta", {})
+        script = apply_citation_cleanup(script, facts, warnings)
 
         # Validate: if language is Vietnamese but script came back in English, reject it
         if plan.language.startswith("vi"):
@@ -124,8 +167,13 @@ def run_script(
                 continue
             if text:
                 fact_texts.append(text)
-        # Build single continuous block
-        hook = f"Đây là {plan.target_blocks} sự thật thú vị về {plan.topic}!" if is_vietnamese else f"Here are {plan.target_blocks} interesting facts about {plan.topic}!"
+        # Build single continuous block — use skill example hook, never generic "Here are N facts"
+        hook_key = "example_hook_vi" if is_vietnamese else "example_hook_en"
+        hook = selected_skill.get(hook_key, "") or selected_skill.get("example_hook_en", "")
+        hook = hook.replace("[topic]", plan.topic)
+        if not hook:
+            first_fact = fact_texts[0][:120] if fact_texts else ""
+            hook = f"{plan.topic} — {first_fact}." if first_fact else plan.topic
         if not fact_texts:
             if is_vietnamese:
                 fact_texts.append(f"{plan.topic} là một chủ đề rất thú vị. Hãy cùng tìm hiểu thêm nhé!")
@@ -143,49 +191,76 @@ def run_script(
 
     lint_result = lint_script(script)
 
-    # --- REWRITE WITH FEEDBACK (max 1 attempt) ---
+    # --- REWRITE WITH FEEDBACK (loop up to max_lint_rewrites attempts) ---
+    _agent_settings = load_agent_settings()
+    max_lint_rewrites = int(_agent_settings.get("max_lint_rewrites", 3))
+    lint_accept_score = int(_agent_settings.get("lint_accept_score", 80))
+
     if lint_result["status"] in ("soft_fail", "hard_fail") and lint_result.get("issues"):
-        # Build specific feedback from lint issues
-        feedback_lines = _build_lint_feedback(lint_result["issues"])
-        original_score = lint_result["score"]
+        best_script = script
+        best_lint = lint_result
+        best_meta = writer_meta
 
-        warnings.append(
-            f"Script lint {lint_result['status']} (score={original_score}). "
-            f"Rewriting with {len(feedback_lines)} specific issues..."
-        )
-        _emit(
-            "script",
-            f"Script quality low (score={original_score}). "
-            f"Rewriting with specific feedback...",
-        )
+        for attempt in range(1, max_lint_rewrites + 1):
+            if best_lint["score"] >= lint_accept_score:
+                break
+            if best_lint["status"] not in ("soft_fail", "hard_fail"):
+                break
 
-        try:
-            # Pass lint issues as extra constraints to the writer
-            writer_result2 = write_script_from_facts(
-                facts,
-                language=plan.language,
-                target_blocks=plan.target_blocks,
-                style=style,
-                extra_constraints=feedback_lines,
-                skill=selected_skill,
+            feedback_lines = _build_lint_feedback(best_lint["issues"])
+            warnings.append(
+                f"Script lint {best_lint['status']} (score={best_lint['score']}, attempt={attempt}). "
+                f"Rewriting with {len(feedback_lines)} specific issues..."
             )
-            script2 = writer_result2["script"]
-            lint_result2 = lint_script(script2)
+            _emit(
+                "script",
+                f"Script quality low (score={best_lint['score']}, attempt {attempt}/{max_lint_rewrites}). "
+                f"Rewriting with specific feedback...",
+            )
 
-            # Keep whichever version scores better
-            if lint_result2["score"] >= original_score:
-                script = script2
-                lint_result = lint_result2
-                writer_meta = writer_result2.get("meta", {})
-                _emit("script", f"Rewrite improved score: {original_score} → {lint_result2['score']}")
-            else:
-                warnings.append(
-                    f"Rewrite scored lower ({lint_result2['score']} < {original_score}). "
-                    "Keeping original."
+            try:
+                writer_result2 = write_script_from_facts(
+                    facts,
+                    language=plan.language,
+                    target_blocks=plan.target_blocks,
+                    style=style,
+                    extra_constraints=feedback_lines,
+                    skill=selected_skill,
+                    video_goal=plan.user_prompt or plan.topic,
+                    must_cover=", ".join(plan.must_cover or []),
                 )
-                _emit("script", "Rewrite didn't improve — keeping original.")
+                script2 = writer_result2["script"]
+                lint_result2 = lint_script(script2)
+
+                if lint_result2["score"] > best_lint["score"]:
+                    _emit(
+                        "script",
+                        f"Rewrite improved score: {best_lint['score']} → {lint_result2['score']}",
+                    )
+                    best_script = script2
+                    best_lint = lint_result2
+                    best_meta = writer_result2.get("meta", {})
+                else:
+                    warnings.append(
+                        f"Rewrite attempt {attempt} scored {lint_result2['score']} "
+                        f"(best={best_lint['score']}). Keeping best so far."
+                    )
+                    _emit("script", f"Rewrite attempt {attempt} didn't improve — keeping best so far.")
+            except Exception as exc:
+                warnings.append(f"Rewrite attempt {attempt} failed: {exc}")
+
+        script = best_script
+        lint_result = best_lint
+        writer_meta = best_meta
+
+    # --- PHRASE WINDOWS (per-moment image variety) ---
+    blocks = script.get("blocks", [])
+    if blocks and blocks[0].get("text"):
+        try:
+            from ..images.phrase_windows import split_into_windows
+            blocks[0]["windows"] = split_into_windows(blocks[0]["text"], plan.topic)
         except Exception as exc:
-            warnings.append(f"Rewrite failed: {exc}")
+            warnings.append(f"Phrase window split failed: {exc}")
 
     # --- DECIDE IMAGE DISPLAY ---
     image_display = plan.image_display  # default from planner
@@ -269,6 +344,6 @@ def _infer_image_display(script: dict, style: str) -> str:
     if style in ("cinematic",):
         bg_score += 2
 
-    if bg_score > popup_score:
-        return "background"
-    return "popup"
+    if popup_score > bg_score:
+        return "popup"
+    return "background"

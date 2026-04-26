@@ -2,18 +2,65 @@
   "skill_id": "debunked",
   "name": "Myth Busted / Debunked",
   "description": "Correcting widespread misconceptions and myths that most people believe are true. High-engagement format because viewers who believe the myth feel personally called out, and viewers who know the truth feel validated. Works for science myths, historical misconceptions, anime misunderstandings, and popular beliefs.",
-  "trigger_keywords": ["myth busted", "debunked", "myths debunked", "wrong about", "misconception", "not actually true", "common myths", "busted myth", "truth vs myth", "everyone gets wrong", "common mistakes about", "myths about", "widely believed myth", "misunderstood facts"],
-  "content_types": ["debunked", "theory", "lore"],
-  "moods": ["shocking", "funny"],
+  "trigger_keywords": [
+    "myth busted",
+    "debunked",
+    "myths debunked",
+    "wrong about",
+    "misconception",
+    "not actually true",
+    "common myths",
+    "busted myth",
+    "truth vs myth",
+    "everyone gets wrong",
+    "common mistakes about",
+    "myths about",
+    "widely believed myth",
+    "misunderstood facts"
+  ],
+  "content_types": [
+    "debunked",
+    "theory",
+    "lore"
+  ],
+  "moods": [
+    "shocking",
+    "funny"
+  ],
   "structure": {
     "hook_rule": "Open by stating the myth as if it's obvious truth, then SHATTER it: 'Everyone believes [common myth]. It's one of those things we all just accepted. And it's completely wrong. Here's why.' The viewer must feel personally called out — they believed this too. Maximum impact when the myth is widely held.",
     "pacing_rule": "Structure each myth bust as: STATE THE MYTH (what everyone believes) → WHY PEOPLE BELIEVE IT (make it feel reasonable) → THE ACTUAL TRUTH (the correction with evidence) → WHY IT MATTERS (the implication). If covering multiple myths, do 3-4 busts, escalating in surprise. Use 'And it gets worse...' between busts. The last myth should be the most widely believed.",
     "ending_rule": "End with the biggest myth bust, then a meta-twist: 'And the craziest part? There are [X] more myths about [topic] that you probably still believe right now.' or 'So the next time someone tells you [myth], you'll know the truth.' Loop back to the opening myth with the corrected version.",
     "tone": "Smart friend who's not judging you for believing the myth — they believed it too. Tone of 'I couldn't believe it either, but look at this.' Never condescending, never preachy. The correction should feel like a gift, not a lecture.",
-    "transitions_en": ["But that's not even the biggest myth...", "And here's another one everyone falls for...", "But the truth is actually way more interesting...", "And this next one? Almost nobody gets it right..."],
-    "transitions_vi": ["Nhưng đó chưa phải myth lớn nhất...", "Và đây là một điều nữa mà ai cũng tin nhầm...", "Nhưng sự thật còn thú vị hơn nhiều...", "Và điều tiếp theo? Gần như không ai đúng..."]
+    "transitions_en": [
+      "But that's not even the biggest myth...",
+      "And here's another one everyone falls for...",
+      "But the truth is actually way more interesting...",
+      "And this next one? Almost nobody gets it right..."
+    ],
+    "transitions_vi": [
+      "Nhưng đó chưa phải myth lớn nhất...",
+      "Và đây là một điều nữa mà ai cũng tin nhầm...",
+      "Nhưng sự thật còn thú vị hơn nhiều...",
+      "Và điều tiếp theo? Gần như không ai đúng..."
+    ]
   },
   "prompt_injection": "FORMAT: Myth-busting with escalating corrections. Structure: MYTH STATEMENT HOOK (state widely-believed myth as fact, then break it) → MYTH 1 + CORRECTION (easiest to accept) → MYTH 2 + CORRECTION (more surprising) → MYTH 3 + CORRECTION (the one that truly shocks) → META CLOSER (tease more myths). For each myth: state it clearly, explain WHY it spread (make viewers feel okay about believing it), then deliver the actual truth with specific evidence. Never be condescending — the viewer should feel enlightened, not stupid. Use 'Actually...' and 'The real reason is...' and 'What really happened was...'. Minimum 200 words.",
+  "extraction_hint": "A fact MATCHES if it reveals: a common misconception and the evidence that disproves it, a myth that fans widely believe but is incorrect, or an official correction to widespread speculation. A fact DOES NOT MATCH if it: confirms what people already correctly believe, or is a straightforward true fact with no misconception angle. When in doubt: ask 'is there a wrong belief this fact corrects?' If no, reject it.",
   "example_hook_en": "You know how everyone says [myth]? Turns out that's completely wrong. And the real answer is way more interesting.",
-  "example_hook_vi": "Bạn biết mọi người luôn nói [myth] đúng không? Hóa ra điều đó hoàn toàn sai. Và câu trả lời thật còn thú vị hơn nhiều."
+  "example_hook_vi": "Bạn biết mọi người luôn nói [myth] đúng không? Hóa ra điều đó hoàn toàn sai. Và câu trả lời thật còn thú vị hơn nhiều.",
+  "quality_gate_questions": [
+    "HOOK: Does the hook state the popular myth clearly before debunking it — so viewers who believe it feel immediately called out?",
+    "EVIDENCE: Is the debunking evidence-based with a specific source, mechanism, or verifiable fact rather than just contradiction?",
+    "SURPRISE: Is there at least one myth that surprises even someone who thought they knew the topic well?",
+    "WHY: Does the script explain WHY the myth persisted or spread, not just that it is wrong?",
+    "RESOLUTION: Does the ending leave the viewer with the correct understanding firmly in place?"
+  ],
+  "coverage_dimensions": [
+    "the myth and why almost everyone believes it",
+    "why the myth spread or seems plausible",
+    "strongest evidence that contradicts it",
+    "the actual truth explained clearly",
+    "why knowing the truth matters or changes behavior"
+  ]
 }

@@ -1,5 +1,116 @@
 {
   "profile_name": "default_shorts",
+  "agent": {
+    "images_per_block": 30,
+    "tts_parallel_chunks": 5,
+    "max_lint_rewrites": 3,
+    "lint_accept_score": 80,
+    "force_cpu_encode": false,
+    "research_mode": "agentic",
+    "research": {
+      "max_ddg_per_query": 10,
+      "max_crawl_pages": 8,
+      "max_final_facts": 12,
+      "max_research_iterations": 2,
+      "extract_concurrency": 1,
+      "max_source_units": 60,
+      "max_retrieval_results": 20,
+      "max_extract_pages": 8,
+      "max_snippets": 15,
+      "page_text_max_chars": 8000,
+      "agentic_provider": "gemini",
+      "agentic_model": "gemma-4-31b-it",
+      "bm25_threshold": 1.2,
+      "min_grounded_facts": 6,
+      "min_tier_diversity": 2,
+      "tier_1_weight": 1.50,
+      "tier_2_weight": 1.00,
+      "tier_3_weight": 0.40,
+      "tier_4_weight": 0.25,
+      "chunk_size_chars": 800,
+      "chunk_min_chars": 150,
+      "chunk_overlap_chars": 100,
+      "parent_window_chunks": 2,
+      "retrieval_top_k": 24,
+      "grounding_fuzzy_threshold": 0.80,
+      "rag_cache_ttl_secs": 604800,
+      "rag_cache_rrf_k": 60,
+      "n_query_expansion": 4,
+      "require_min_tier": 2,
+      "tier_floor_by_category": {
+        "anime": 3,
+        "gaming": 3,
+        "entertainment": 3,
+        "trending": 3
+      }
+    },
+    "tts": {
+      "min_word_duration_sec": 0.05,
+      "micro_gap_sec": 0.015,
+      "max_gap_sec": 0.24,
+      "drift_threshold_sec": 0.16,
+      "scale_min": 0.88,
+      "scale_max": 1.18,
+      "max_ramp_shift_sec": 0.50,
+      "total_ramp_shift_limit_sec": 0.80,
+      "tail_margin_sec": 0.03,
+      "min_chunk_text_length": 400,
+      "max_chunk_chars": 500
+    },
+    "editor": {
+      "min_event_duration_sec": 0.35,
+      "fade_duration_sec": 0.15,
+      "scale_factor": 1.15,
+      "max_overlays": 12,
+      "image_downscale_width": 734,
+      "jpeg_quality": 85
+    },
+    "lab_editor": {
+      "editor_mode": "lab",
+      "words_per_block": 30,
+      "xfade_duration": 0.20,
+      "transition_directions": ["left", "up", "right", "down"],
+      "bgm_volume": 0.15
+    },
+    "trending": {
+      "cache_ttl_secs": 86400,
+      "cache_eviction_secs": 172800,
+      "cache_sim_threshold": 0.88,
+      "dedup_jaccard_threshold": 0.5,
+      "dedup_lock_secs": 604800,
+      "summarization_temperature": 0.3,
+      "brainstorm_temperature": 0.6,
+      "score_weights": {
+        "anilist": 0.45,
+        "jikan": 0.25,
+        "reddit": 0.20,
+        "popularity_norm": 0.10
+      },
+      "episode_drop_bonus_hours": 24,
+      "episode_drop_bonus_score": 0.15,
+      "min_popularity_for_top": 50000
+    }
+  },
+  "models": {
+    "defaults": {
+      "providers": ["groq", "gemini"],
+      "gemini_model": "gemma-3-27b-it",
+      "groq_model": "llama-3.3-70b-versatile"
+    },
+    "stages": {
+      "script":           { "providers": ["gemini", "groq"], "gemini_model": "gemma-4-31b-it", "groq_model": "llama-3.3-70b-versatile" },
+      "quality_gate":     { "providers": ["gemini", "groq"], "gemini_model": "gemma-4-31b-it", "groq_model": "llama-3.3-70b-versatile" },
+      "refine":           {},
+      "research":         {},
+      "research_extract": { "providers": ["gemini", "groq"], "gemini_model": "gemma-4-31b-it", "groq_model": "llama-3.3-70b-versatile", "no_think": true },
+      "plan":             { "providers": ["groq", "gemini"], "groq_model": "llama-3.3-70b-versatile", "gemini_model": "gemma-3-27b-it" },
+      "crawl":            { "providers": ["groq"], "groq_model": "llama-3.1-8b-instant" },
+      "interest_rank":    { "providers": ["groq"], "groq_model": "llama-3.1-8b-instant" },
+      "bank_extract":     { "providers": ["groq"], "groq_model": "llama-3.1-8b-instant" },
+      "research_eval":   { "providers": ["groq"], "groq_model": "llama-3.1-8b-instant" },
+      "trend_brainstorm": { "providers": ["groq"], "groq_model": "llama-3.3-70b-versatile" }
+    }
+  },
   "resolution": {
     "width": 1080,
     "height": 1920
@@ -12,10 +123,14 @@
     "default_bgm_volume": 0.15
   },
   "tts": {
-    "default_rate": "+25%",
+    "default_rate": "18%",
     "default_pitch": "+0Hz",
     "default_volume": "+0%",
     "parallel_workers": 3
+  },
+  "editor": {
+    "min_img_sec": 6.0,
+    "max_img_sec": 8.0
   },
   "subtitle": {
     "default_preset": "minimal",

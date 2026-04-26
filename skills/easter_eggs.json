@@ -2,18 +2,64 @@
   "skill_id": "easter_eggs",
   "name": "Easter Eggs & Hidden Details",
   "description": "Hidden references, foreshadowing, and easter eggs that most people walked right past. Detective-like discovery tone where each detail revealed is more mind-blowing than the last. Makes viewers want to immediately revisit the source.",
-  "trigger_keywords": ["easter eggs", "hidden details", "hidden references", "foreshadowing", "you missed", "look closely", "details you missed", "secret details", "hidden meaning", "subtle", "blink and you miss", "background details", "things you missed", "never noticed"],
-  "content_types": ["easter_eggs", "lore"],
-  "moods": ["shocking", "dark_mystery"],
+  "trigger_keywords": [
+    "easter eggs",
+    "hidden details",
+    "hidden references",
+    "foreshadowing",
+    "you missed",
+    "look closely",
+    "details you missed",
+    "secret details",
+    "hidden meaning",
+    "subtle",
+    "blink and you miss",
+    "background details",
+    "things you missed",
+    "never noticed"
+  ],
+  "content_types": [
+    "easter_eggs",
+    "lore"
+  ],
+  "moods": [
+    "shocking",
+    "dark_mystery"
+  ],
   "structure": {
     "hook_rule": "Open with the most MIND-BLOWING hidden detail — the one that recontextualizes everything: 'There's a detail in [topic] that 99% of people walked right past. And once you see it, you can NEVER unsee it.' Make it sound like you discovered something the creators tried to hide in plain sight.",
     "pacing_rule": "Each detail is a DISCOVERY. Use discovery language: 'Look closely at...', 'If you pause right here...', 'Notice how [X] appears in BOTH scenes...', 'The creator actually hid...'. Start with easy-to-spot details (viewers feel smart), escalate to frame-by-frame analysis details (viewers feel like experts). 4-6 easter eggs, each with a clear 'reveal' moment.",
     "ending_rule": "End with a detail that RECONTEXTUALIZES everything viewers thought they knew: 'And this one detail changes the meaning of the ENTIRE [topic].' Then hint there are even more: 'And I haven't even gotten to what's hidden in [specific scene/chapter]...' Loop back to the opening.",
     "tone": "Excited detective who just cracked a cold case. Sharing discoveries with fellow obsessives who will appreciate the depth. Think 'you're NOT going to believe what I found.'",
-    "transitions_en": ["But that's just the beginning...", "And if you look even closer...", "But THIS detail is what really shocked me...", "Have you ever noticed..."],
-    "transitions_vi": ["Nhưng đó mới chỉ là khởi đầu...", "Và nếu bạn nhìn kỹ hơn...", "Nhưng chi tiết này mới thực sự gây sốc...", "Bạn đã bao giờ để ý..."]
+    "transitions_en": [
+      "But that's just the beginning...",
+      "And if you look even closer...",
+      "But THIS detail is what really shocked me...",
+      "Have you ever noticed..."
+    ],
+    "transitions_vi": [
+      "Nhưng đó mới chỉ là khởi đầu...",
+      "Và nếu bạn nhìn kỹ hơn...",
+      "Nhưng chi tiết này mới thực sự gây sốc...",
+      "Bạn đã bao giờ để ý..."
+    ]
   },
   "prompt_injection": "FORMAT: Easter egg reveal chain with escalating discovery. Structure: IMPOSSIBLE-TO-IGNORE HOOK → Easy Detail (viewer validation) → Medium Detail (surprising connection) → Hard Detail (frame-by-frame level) → GAME-CHANGER Detail (recontextualizes everything) → 'There's more' closer. Every detail must feel like a real-time discovery. Use phrases like 'If you look closely...', 'What most people miss is...', 'The creator actually hid...', 'And THIS connects to...'. The viewer should want to immediately go back and rewatch/revisit the source material. Never just describe — REVEAL. Minimum 200 words.",
+  "extraction_hint": "A fact MATCHES if it reveals: a hidden reference to another work, an intentional background detail planted by the creators, a secret meaning in a name or symbol, or a deliberate callback that most viewers missed. A fact DOES NOT MATCH if it is: a straightforward plot event, an obvious character trait, or any fact not related to intentional hidden design. When in doubt: ask 'did the creators deliberately hide this for viewers to discover?' If no, reject it.",
   "example_hook_en": "There's a hidden detail in [topic] that changes EVERYTHING. And almost nobody caught it.",
-  "example_hook_vi": "Có một chi tiết ẩn trong [topic] thay đổi TẤT CẢ. Và gần như không ai phát hiện ra."
+  "example_hook_vi": "Có một chi tiết ẩn trong [topic] thay đổi TẤT CẢ. Và gần như không ai phát hiện ra.",
+  "quality_gate_questions": [
+    "HOOK: Does the hook reference a specific easter egg or hidden detail rather than vaguely promising 'hidden things exist'?",
+    "VERIFIABLE: Are the easter eggs verifiable intentional details from the creators — not fan theories or coincidences?",
+    "IMPACT: Is there at least one easter egg that meaningfully changes how the viewer will experience the source material?",
+    "PATTERN: Does the ending connect the easter eggs to a larger pattern or creative intention rather than just listing them?",
+    "FINDABLE: Are the egg descriptions specific enough that a viewer could actually locate them in the source material?"
+  ],
+  "coverage_dimensions": [
+    "why easter eggs matter in this subject (creator intent or pattern)",
+    "easter egg 1 — visible but almost always missed",
+    "easter egg 2 — requires prior knowledge to catch",
+    "easter egg 3 — creator-level insider reference",
+    "the meta pattern or hidden system tying them together"
+  ]
 }

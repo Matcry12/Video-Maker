@@ -1,0 +1,4 @@
+=== vi ===
+Hãy cho tôi 6 sự thật THÚ VỊ, BẤT NGỜ và CỤ THỂ về: {topic}. Chỉ viết những chi tiết ẨN GIẤU mà đa số fan không biết. Bao gồm chi tiết như tên, số liệu, ngày tháng. Viết bằng tiếng Việt. Không dùng markdown, không dùng **bold**, không dùng ### heading.
+=== en ===
+Tell me 6 HIDDEN, SURPRISING facts about: {topic}. Only include details most fans don't know. Include names, numbers, dates. No markdown formatting.

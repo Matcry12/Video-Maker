@@ -22,6 +22,8 @@ import edge_tts
 import numpy as np
 import soundfile as sf
 
+from .agent_config import load_agent_settings
+
 logger = logging.getLogger(__name__)
 
 CACHE_DIR = Path(__file__).parent.parent / "tmp" / "cache"
@@ -46,21 +48,24 @@ DEFAULT_VOLUME = "+0%"
 DEFAULT_ALIGNMENT_MODE = "corrected"
 SUPPORTED_ALIGNMENT_MODES = {"edge", "corrected", "forced"}
 
-TIMING_MIN_WORD_DURATION_SEC = 0.05
-TIMING_MICRO_GAP_SEC = 0.015
-TIMING_MAX_GAP_SEC = 0.24
-TIMING_DRIFT_THRESHOLD_SEC = 0.16
-TIMING_SCALE_MIN = 0.88
-TIMING_SCALE_MAX = 1.18
-TIMING_MAX_RAMP_SHIFT_SEC = 0.50
-TIMING_TOTAL_RAMP_SHIFT_LIMIT_SEC = 0.80
-TIMING_TAIL_MARGIN_SEC = 0.03
+from .agent_config import load_agent_settings as _load_agent_settings
+_tts_cfg = _load_agent_settings().get("tts", {})
+
+TIMING_MIN_WORD_DURATION_SEC = float(_tts_cfg.get("min_word_duration_sec", 0.05))
+TIMING_MICRO_GAP_SEC = float(_tts_cfg.get("micro_gap_sec", 0.015))
+TIMING_MAX_GAP_SEC = float(_tts_cfg.get("max_gap_sec", 0.24))
+TIMING_DRIFT_THRESHOLD_SEC = float(_tts_cfg.get("drift_threshold_sec", 0.16))
+TIMING_SCALE_MIN = float(_tts_cfg.get("scale_min", 0.88))
+TIMING_SCALE_MAX = float(_tts_cfg.get("scale_max", 1.18))
+TIMING_MAX_RAMP_SHIFT_SEC = float(_tts_cfg.get("max_ramp_shift_sec", 0.50))
+TIMING_TOTAL_RAMP_SHIFT_LIMIT_SEC = float(_tts_cfg.get("total_ramp_shift_limit_sec", 0.80))
+TIMING_TAIL_MARGIN_SEC = float(_tts_cfg.get("tail_margin_sec", 0.03))
 TIMING_EPS = 1e-6
 
 # --- Parallel chunking constants ---
-MIN_CHUNK_TEXT_LENGTH = 400        # Text shorter than this skips chunking
-MAX_CHUNK_CHARS = 500              # Max characters per chunk
-CHUNK_SEMAPHORE_LIMIT = 5          # Max concurrent edge-tts calls per synthesize()
+MIN_CHUNK_TEXT_LENGTH = int(_tts_cfg.get("min_chunk_text_length", 400))  # Text shorter than this skips chunking
+MAX_CHUNK_CHARS = int(_tts_cfg.get("max_chunk_chars", 500))              # Max characters per chunk
+CHUNK_SEMAPHORE_LIMIT = int(load_agent_settings().get("tts_parallel_chunks", 5))  # Max concurrent edge-tts calls per synthesize()
 _EDGE_TTS_GLOBAL_SEMAPHORE = threading.Semaphore(10)  # Global cap across all workers
 
 # Sentence boundary regex — handles Vietnamese punctuation, avoids splitting on

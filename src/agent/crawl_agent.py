@@ -2,7 +2,6 @@
 
 import gc
 import logging
-import os
 from typing import Any, Callable, Optional
 
 from .models import AgentPlan, CrawlResult
@@ -77,15 +76,9 @@ def run_crawl(
     candidates = to_rank_candidates(top_units)
     ranked_items: list[Any] = []
 
-    interest_model = (
-        os.getenv("GROQ_INTEREST_MODEL")
-        or os.getenv("GROQ_MODEL")
-        or "llama-3.1-8b-instant"
-    )
-
     try:
         ranking_result = rank_interest_candidates(
-            candidates, model=interest_model, language=plan.language,
+            candidates, language=plan.language, stage="interest_rank",
         )
         ranked_items = ranking_result.get("items", [])
     except Exception as exc:

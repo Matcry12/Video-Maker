@@ -2,30 +2,56 @@
 
 import json
 import logging
-import os
 import re
+from pathlib import Path as _Path
 from typing import Optional
 
 from .models import AgentConfig, AgentPlan
 
+_PROMPT_DIR = _Path(__file__).parent.parent.parent / "prompts"
+
+
+def _load_prompt(name: str) -> str:
+    return (_PROMPT_DIR / name).read_text(encoding="utf-8")
+
 logger = logging.getLogger(__name__)
+
+
+def _has_vn_chars(s: str) -> bool:
+    # Latin Extended Additional (U+1E00–U+1EFF) covers all Vietnamese diacritics.
+    return any(0x1E00 <= ord(c) <= 0x1EFF or 0x00C0 <= ord(c) <= 0x017F for c in s)
+
+
+def _heuristic_must_cover(prompt: str) -> list[str]:
+    """Extract must_cover angles from prompt via simple regex when LLM omits the field."""
+    import re as _re
+    angles: list[str] = []
+    # Patterns: "cover X", "explain X", "compare X", "comparing X", "about X"
+    patterns = [
+        r"cover(?:ing)?\s+(?:his|her|its|their|the)?\s*([a-zA-Z][a-zA-Z\s]{3,40}?)(?:[,\.]|$)",
+        r"explain(?:ing)?\s+(?:his|her|its|their|the)?\s*([a-zA-Z][a-zA-Z\s]{3,40}?)(?:[,\.]|$)",
+        r"compar(?:e|ing)\s+(?:with|to|how)?\s*([a-zA-Z][a-zA-Z\s]{3,40}?)(?:[,\.]|$)",
+    ]
+    for pat in patterns:
+        for m in _re.finditer(pat, prompt, _re.IGNORECASE):
+            angle = m.group(1).strip().rstrip("., ")
+            if 3 <= len(angle) <= 50:
+                angles.append(angle)
+    return angles[:5]
 
 
 def plan_from_prompt(
     prompt: str,
     user_config: Optional[AgentConfig] = None,
-    model: str = "",
 ) -> AgentPlan:
     """Parse a user prompt into a structured AgentPlan.
 
-    Uses a single cheap LLM call (8b model) to extract structured config.
-    Falls back to regex/heuristic extraction if LLM fails.
+    Uses a single cheap LLM call (stage="plan", typically 8b) to extract
+    structured config. Falls back to regex/heuristic extraction if LLM fails.
     User overrides (AgentConfig) always take precedence over LLM inference.
     """
-    model = model or os.getenv("GROQ_MODEL", "") or "llama-3.1-8b-instant"
-
     try:
-        plan = _plan_with_llm(prompt, model)
+        plan = _plan_with_llm(prompt)
     except Exception as exc:
         logger.warning("LLM planning failed (%s). Using heuristic fallback.", exc)
         plan = _plan_heuristic(prompt)
@@ -47,85 +73,98 @@ def _merge_config(plan: AgentPlan, config: AgentConfig) -> AgentPlan:
         plan.style = config.style
     if config.voice is not None:
         plan.voice = config.voice
+    if config.bgm_mood is not None:
+        plan.bgm_mood = config.bgm_mood
+    # skill_id stays on user_overrides — script_agent reads it from there
     plan.user_overrides = config
     return plan
 
 
-def _plan_with_llm(prompt: str, model: str) -> AgentPlan:
-    """Use LLM to extract structured plan from prompt."""
+def _plan_with_llm(prompt: str) -> AgentPlan:
+    """Call the plan LLM. Raises on parse failure so caller can fall back."""
+    from .robust_json import extract_json_dict
     from ..llm_client import chat_completion
 
-    system_prompt = (
-        "Extract video generation parameters from the user's request. "
-        "Analyze the topic to determine the best content strategy for a viral YouTube Short.\n"
-        "Return strict JSON only:\n"
-        '{"topic": "...", "language": "en-US or vi-VN", '
-        '"style": "dramatic|educational|cinematic|energetic|minimal or empty", '
-        '"topic_category": "history|anime|science|biography|trending|entertainment|gaming or empty", '
-        '"content_type": "lore|dark_secrets|theory|easter_eggs|comparison|story_time|what_happened_to|timeline|debunked|explained or empty '
-        '(lore=deep hidden details, dark_secrets=shocking truths/dark side, theory=fan theories/debates, '
-        'easter_eggs=hidden references/foreshadowing, comparison=vs battles, '
-        'story_time=narrative storytelling with emotional arc, what_happened_to=nostalgia update/rise and fall, '
-        'timeline=chronological evolution/progression, debunked=myth busting/correcting misconceptions, '
-        'explained=fast educational breakdown of complex topics)", '
-        '"mood": "dark_mystery|epic|emotional|funny|shocking or empty '
-        '(the emotional tone of the video)", '
-        '"hook_strategy": "lead_with_number|lead_with_question|lead_with_statement|lead_with_contrast or empty '
-        '(lead_with_number=shocking statistic, lead_with_question=provocative question, '
-        'lead_with_statement=bold controversial claim, lead_with_contrast=Everyone thinks X but actually Y)", '
-        '"bgm_mood": "intense|calm|mystery|epic|emotional or empty '
-        '(background music mood matching the video tone)", '
-        '"target_blocks": 4-8, '
-        '"image_display": "popup for storytelling/facts/lists, background for scenic/travel/nature/mood", '
-        '"voice": "voice name if specified, else empty", '
-        '"search_queries": ["q1","q2","q3","q4","q5","q6"] '
-        "(6-8 web search queries targeting DIFFERENT angles: "
-        "hidden details, dark facts, fan theories, behind the scenes, "
-        "easter eggs, controversies, things you didn't know, psychological analysis. "
-        "Use varied wording — each query should find DIFFERENT content. "
-        "IMPORTANT: For anime/manga/entertainment/gaming topics, ALWAYS include 3+ English queries "
-        "with the original English/romaji title + varied suffixes like 'hidden details', "
-        "'dark facts', 'things you didn't know', 'creator interview', 'cut content'. "
-        'Example: "Subaru Natsuki Re:Zero dark facts", '
-        '"Re:Zero things you didn\'t know", "Re:Zero creator Tappei Nagatsuki interview". '
-        "English sources have much more detail for anime/entertainment.)}"
-    )
-
-    content = chat_completion(
-        system=system_prompt,
-        user=prompt,
-        model=model,
+    template = _load_prompt("plan.txt")
+    system = template.replace("{prompt}", prompt)
+    raw = chat_completion(
+        system=system,
+        user="Return the JSON now.",
+        stage="plan",
         temperature=0.1,
-        timeout=15.0,
+        timeout=20.0,
     )
+    data = extract_json_dict(
+        raw,
+        required_keys=["topic", "language", "search_queries"],
+    )
+    if not data:
+        raise ValueError(f"plan LLM returned no parseable JSON: {raw[:200]!r}")
 
-    match = re.search(r'\{.*\}', content, re.DOTALL)
-    if not match:
-        raise ValueError(f"No JSON found in LLM response: {content[:200]}")
+    aliases = data.get("entity_aliases") or []
+    if not isinstance(aliases, list):
+        aliases = [str(aliases)]
+    aliases = [str(a).strip() for a in aliases if str(a).strip()][:6]
 
-    data = json.loads(match.group())
+    raw_queries = data.get("search_queries") or []
+    if not isinstance(raw_queries, list):
+        raw_queries = [str(raw_queries)]
+    queries = [str(q).strip() for q in raw_queries if str(q).strip()]
+    if len(queries) > 10:
+        logger.info("plan: truncated search_queries from %d to 10", len(queries))
+        queries = queries[:10]
 
-    # Validate image_display
-    raw_display = str(data.get("image_display", "popup")).strip().lower()
-    image_display = raw_display if raw_display in ("popup", "background") else "popup"
+    image_display = str(data.get("image_display") or "popup").strip().lower()
+    if image_display not in ("popup", "background"):
+        image_display = "popup"
 
-    # Extract search queries
-    raw_queries = data.get("search_queries", [])
-    search_queries = [str(q).strip() for q in raw_queries if str(q).strip()][:8]
+    target_blocks_raw = data.get("target_blocks", 6)
+    try:
+        target_blocks = int(target_blocks_raw)
+    except (TypeError, ValueError):
+        target_blocks = 6
+    target_blocks = min(max(target_blocks, 3), 10)
+
+    domain_prefs = data.get("domain_preferences") or []
+    if not isinstance(domain_prefs, list):
+        domain_prefs = []
+    domain_prefs = [str(d).strip() for d in domain_prefs if str(d).strip()][:6]
+
+    must_cover_raw = data.get("must_cover") or []
+    if not isinstance(must_cover_raw, list):
+        must_cover_raw = []
+    must_cover = [str(a).strip() for a in must_cover_raw if str(a).strip()][:5]
+
+    if not must_cover:
+        must_cover = _heuristic_must_cover(prompt)
+
+    entity_cards_raw = data.get("entity_cards") or []
+    if not isinstance(entity_cards_raw, list):
+        entity_cards_raw = []
+    entity_cards = [d for d in entity_cards_raw if isinstance(d, dict)][:10]
+
+    narrative_dynamic = str(data.get("narrative_dynamic") or "").strip()
 
     return AgentPlan(
-        topic=str(data.get("topic", "")).strip() or _extract_topic_heuristic(prompt),
-        language=str(data.get("language", "en-US")).strip() or "en-US",
-        style=str(data.get("style", "")).strip(),
-        topic_category=str(data.get("topic_category", "")).strip(),
-        content_type=str(data.get("content_type", "")).strip(),
-        mood=str(data.get("mood", "")).strip(),
-        hook_strategy=str(data.get("hook_strategy", "")).strip(),
-        bgm_mood=str(data.get("bgm_mood", "")).strip(),
-        target_blocks=min(max(int(data.get("target_blocks", 6)), 3), 10),
+        topic=str(data.get("topic") or "").strip(),
+        language=str(data.get("language") or "en-US").strip(),
+        style=str(data.get("style") or "").strip(),
+        topic_category=str(data.get("topic_category") or "").strip(),
+        content_type=str(data.get("content_type") or "").strip(),
+        mood=str(data.get("mood") or "").strip(),
+        hook_strategy=str(data.get("hook_strategy") or "").strip(),
+        bgm_mood=str(data.get("bgm_mood") or "").strip(),
+        target_blocks=target_blocks,
         image_display=image_display,
-        voice=str(data.get("voice", "")).strip(),
-        search_queries=search_queries,
+        voice=str(data.get("voice") or "").strip(),
+        search_queries=queries,
+        entity_aliases=aliases,
+        domain_preferences=domain_prefs,
+        forbidden_entities=[],
+        user_prompt=prompt,
+        must_cover=must_cover,
+        entity_cards=entity_cards,
+        narrative_dynamic=narrative_dynamic,
     )
 
 
@@ -137,9 +176,7 @@ def _plan_heuristic(prompt: str) -> AgentPlan:
     lower = prompt.lower()
     # Detect Vietnamese: explicit indicators OR Vietnamese Unicode characters in the prompt
     vn_indicators = ["tiếng việt", "vietnamese", "vi-vn", "bằng tiếng việt"]
-    vn_chars = set("àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ")
-    has_vn_chars = any(c in vn_chars for c in lower)
-    if any(ind in lower for ind in vn_indicators) or has_vn_chars:
+    if any(ind in lower for ind in vn_indicators) or _has_vn_chars(lower):
         language = "vi-VN"
 
     style = ""
@@ -158,7 +195,10 @@ def _plan_heuristic(prompt: str) -> AgentPlan:
     bg_keywords = ["scenic", "travel", "nature", "landscape", "mood", "cinematic", "aesthetic", "background"]
     image_display = "background" if any(kw in lower for kw in bg_keywords) else "popup"
 
-    return AgentPlan(topic=topic, language=language, style=style, image_display=image_display)
+    must_cover = _heuristic_must_cover(prompt)
+
+    return AgentPlan(topic=topic, language=language, style=style, image_display=image_display,
+                     user_prompt=prompt, must_cover=must_cover)
 
 
 def _extract_topic_heuristic(prompt: str) -> str:

@@ -39,3 +39,6 @@ output/
 json_scripts/
 assets/videos/
 content_drafts/
+# Added by code-review-graph
+.code-review-graph/
+.omx/

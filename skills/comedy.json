@@ -1,0 +1,63 @@
+{
+  "skill_id": "comedy",
+  "name": "Comedy Breakdown",
+  "description": "Humor-first content that dissects what makes a show, scene, or character genuinely funny. Celebrates absurd premises, running gags, character comedy, and the gap between expectation and reality. Leans into the chaos with a voice that's entertained, not just informative.",
+  "trigger_keywords": [
+    "funny",
+    "comedy",
+    "hilarious",
+    "absurd",
+    "gag",
+    "humor",
+    "ridiculous",
+    "funniest",
+    "most embarrassing",
+    "awkward",
+    "chaotic",
+    "most ridiculous",
+    "funniest moments",
+    "best jokes"
+  ],
+  "content_types": [
+    "comedy",
+    "highlights"
+  ],
+  "moods": [
+    "funny",
+    "energetic"
+  ],
+  "structure": {
+    "hook_rule": "Open with the most absurd premise or the single funniest moment — but frame it as a question: 'What happens when [ridiculous situation]?' The viewer should immediately feel like they're in on a joke. Never explain the punchline before the setup.",
+    "pacing_rule": "Structure around escalating absurdity — start odd, get weirder, peak at the most unhinged moment. Each beat should either subvert an expectation or pay off a setup from two beats ago. Spend one sentence max setting up, one sentence delivering the punchline. Never linger.",
+    "ending_rule": "End with a callback to the opening premise, but with the new context making it funnier: 'Remember that [opening setup]? Yeah, it gets worse.' Leave the viewer feeling like they just watched something they can't unsee.",
+    "tone": "Amused co-conspirator — you're not explaining jokes, you're sharing them with a friend who will immediately understand why it's funny. Dry wit over hype. Deadpan works. The funniest delivery is often the most matter-of-fact one.",
+    "transitions_en": [
+      "And then somehow it gets worse...",
+      "But wait, it doesn't stop there...",
+      "Which brings us to the real chaos...",
+      "And obviously, that's when everything falls apart..."
+    ],
+    "transitions_vi": [
+      "Và rồi mọi thứ còn tệ hơn nữa...",
+      "Nhưng chờ đã, chưa hết đâu...",
+      "Điều này dẫn đến màn hỗn loạn thực sự...",
+      "Và tất nhiên, đó là lúc mọi thứ sụp đổ..."
+    ]
+  },
+  "prompt_injection": "FORMAT: Comedy highlight reel with escalating absurdity. CRITICAL: Every beat needs a setup AND a punchline — never explain why something is funny, just present it and let it land. Structure: absurd hook premise → first funny moment → escalating chaos → peak absurdity → callback closer. Use the character's situation against them: their logic, their failures, their unexpected consequences. Write like a friend retelling the funniest thing they saw this week, not like a critic analyzing humor. Minimum 200 words.",
+  "extraction_hint": "A fact MATCHES if it highlights: a character doing something that backfires hilariously, an absurd gap between a character's self-image and reality, a situation that escalates in an unexpected direction, or a running gag with a great payoff. A fact DOES NOT MATCH if it is: a serious plot point, a dramatic moment, or a general description with no comedic element. When in doubt: ask 'would someone retell this story to get a laugh?' If no, reject it.",
+  "quality_gate_questions": [
+    "HOOK: Does the first line land an absurd or unexpected premise that immediately signals this will be funny?",
+    "SURPRISE: Is there at least one moment of genuine comedic surprise — a punchline or beat the viewer didn't see coming?",
+    "SPECIFICITY: Does the humor come from specific details rather than vague descriptions that could apply to anything?",
+    "CALLBACK: Does the last line deliver a punchline or callback to the opening premise?",
+    "ENERGY: Does the energy stay consistently playful throughout — no tonal dips into dry reporting or overly serious narration?"
+  ],
+  "coverage_dimensions": [
+    "the bit or scene being analyzed",
+    "why it is funny (comic mechanism — timing, subversion, absurdity)",
+    "the hidden layer or darker reading most viewers miss",
+    "recurring jokes or callbacks that define the show",
+    "what makes this creator or show uniquely funny vs everyone else"
+  ]
+}

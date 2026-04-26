@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .fetch import download_image, search_images
+from .wikimedia_source import search_wikimedia_commons
 
 logger = logging.getLogger(__name__)
 
@@ -39,27 +40,59 @@ def get_images_for_script(
 
     for block_idx, block in enumerate(blocks):
         keywords = block.get("image_keywords", [])
+        windows = block.get("windows", [])
+        block_images: list[dict] = []
 
-        # Primary: search with topic name directly (most reliable for DDG)
-        logger.info("Block %d: searching with topic '%s'", block_idx, topic)
-        paths = _search_and_download(topic, sources, images_per_block, used_urls)
-        # Convert to dicts with empty keyword (topic-level search)
-        block_images = [{"path": p, "keyword": ""} for p in paths]
-
-        # Fallback 1: search each keyword individually if not enough images
-        if len(block_images) < images_per_block and keywords:
-            for kw in keywords:
+        if windows:
+            # Primary: per-window keyword search — gives visual variety across the narration
+            per_window = max(2, images_per_block // max(1, len(windows)))
+            for win in windows:
                 if len(block_images) >= images_per_block:
                     break
-                kw_str = str(kw).strip()
-                if not kw_str:
-                    continue
-                logger.info("Block %d: keyword fallback search '%s'", block_idx, kw_str)
-                extra = _search_and_download(kw_str, sources, 3, used_urls)
-                block_images.extend([{"path": p, "keyword": kw_str} for p in extra])
+                for kw in win.get("image_keywords", [])[:2]:
+                    if len(block_images) >= images_per_block:
+                        break
+                    kw_str = str(kw).strip()
+                    if not kw_str:
+                        continue
+                    logger.info("Block %d window: keyword search '%s'", block_idx, kw_str)
+                    extra = _search_and_download(kw_str, sources, per_window, used_urls)
+                    block_images.extend([{"path": p, "keyword": kw_str} for p in extra])
+
+            # Fallback: topic search when windows don't fill the quota
+            if len(block_images) < images_per_block:
+                logger.info("Block %d: topic fallback search '%s'", block_idx, topic)
+                paths = _search_and_download(topic, sources, images_per_block - len(block_images), used_urls)
+                block_images.extend([{"path": p, "keyword": ""} for p in paths])
+        else:
+            # No windows — original path: topic primary, keyword fallback
+            logger.info("Block %d: searching with topic '%s'", block_idx, topic)
+            paths = _search_and_download(topic, sources, images_per_block, used_urls)
+            block_images = [{"path": p, "keyword": ""} for p in paths]
+
+            if len(block_images) < images_per_block and keywords:
+                for kw in keywords:
+                    if len(block_images) >= images_per_block:
+                        break
+                    kw_str = str(kw).strip()
+                    if not kw_str:
+                        continue
+                    logger.info("Block %d: keyword fallback search '%s'", block_idx, kw_str)
+                    extra = _search_and_download(kw_str, sources, 3, used_urls)
+                    block_images.extend([{"path": p, "keyword": kw_str} for p in extra])
+
+        block_images = block_images[:images_per_block]
+
+        # Fallback 2: Wikimedia Commons — if still fewer than 3 images after keyword search
+        if len(block_images) < 3:
+            wm_keyword = f"{topic} {keywords[0]}" if keywords else topic
+            wm_keyword = wm_keyword.strip()[:80]
+            logger.info("Block %d: Wikimedia Commons fallback search '%s'", block_idx, wm_keyword)
+            wm_paths = search_wikimedia_commons(wm_keyword, max_images=5)
+            block_images.extend([{"path": p, "keyword": wm_keyword} for p in wm_paths])
             block_images = block_images[:images_per_block]
 
-        # Fallback 2: try DDG specifically if not already using it alone
+        # Fallback 3: try DDG specifically if not already using it alone
         if not block_images and sources != ["ddg"]:
             logger.info("Block %d: retrying with DDG-only for '%s'", block_idx, topic)
             paths = _search_and_download(topic, ["ddg"], images_per_block, used_urls)

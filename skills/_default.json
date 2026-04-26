@@ -2,7 +2,16 @@
   "skill_id": "_default",
   "name": "General",
   "description": "General viral YouTube Shorts narration. Fast-paced, curiosity-driven storytelling with sharp hooks, escalating revelations, and seamless loop ending. Works for any topic when no specific format matches.",
-  "trigger_keywords": ["video", "short", "viral", "narration", "general", "story", "tell me about", "explain"],
+  "trigger_keywords": [
+    "video",
+    "short",
+    "viral",
+    "narration",
+    "general",
+    "story",
+    "tell me about",
+    "explain"
+  ],
   "content_types": [],
   "moods": [],
   "structure": {
@@ -10,10 +19,35 @@
     "pacing_rule": "Alternate sentence length: short punch (5-8 words), then context (15-20 words), then short punch. Every 15-20 words introduce a new revelation or twist. Never let 3 consecutive sentences be the same length.",
     "ending_rule": "The LAST sentence must grammatically and semantically CONNECT BACK to the FIRST sentence, creating a seamless loop. Viewers who replay hear a continuous story. End on a cliffhanger that the hook answers.",
     "tone": "Fast, curiosity-driven short-form narrator. Speak like you're telling a friend something insane you just discovered. Never sound like a documentary or textbook.",
-    "transitions_en": ["But that's not even the craziest part...", "And here's where it gets insane...", "But wait...", "Now here's the thing nobody talks about..."],
-    "transitions_vi": ["Nhưng đó chưa phải tất cả...", "Điều thú vị hơn là...", "Nhưng chờ đã...", "Và đây là phần điên rồ nhất..."]
+    "transitions_en": [
+      "But that's not even the craziest part...",
+      "And here's where it gets insane...",
+      "But wait...",
+      "Now here's the thing nobody talks about..."
+    ],
+    "transitions_vi": [
+      "Nhưng đó chưa phải tất cả...",
+      "Điều thú vị hơn là...",
+      "Nhưng chờ đã...",
+      "Và đây là phần điên rồ nhất..."
+    ]
   },
   "prompt_injection": "Write as a viral short-form narrator. Every sentence must earn the viewer's attention. No filler, no generic documentary tone. Concrete details over broad framing. Structure: HOOK (1-2 sentences, most shocking fact) → ESCALATION (3-4 revelations, each bigger than the last) → TWIST (unexpected connection) → LOOP CLOSER (ties back to hook). Minimum 200 words.",
+  "extraction_hint": "A fact MATCHES if it is: specific, non-obvious, and would genuinely interest someone who already knows the basics about this topic. A fact DOES NOT MATCH if it is: widely-known mainstream information, a vague generalization, or a basic plot event any fan would know. When in doubt: ask 'would a knowledgeable fan learn something new from this?' If no, reject it.",
   "example_hook_en": "This city was abandoned overnight. 350,000 people just... left. And nobody was allowed to go back.",
-  "example_hook_vi": "Subaru đã chết chính xác 27 lần. Và lần đau đớn nhất không phải do kẻ thù."
+  "example_hook_vi": "Subaru đã chết chính xác 27 lần. Và lần đau đớn nhất không phải do kẻ thù.",
+  "quality_gate_questions": [
+    "HOOK: Does the FIRST sentence contain a shocking fact, bold claim, or curiosity gap that would stop a viewer from scrolling?",
+    "LORE vs RECAP: Does the script reveal HIDDEN details, theories, or dark secrets — or is it just a basic plot summary that any fan already knows?",
+    "SURPRISE: Is there at least one moment where even a knowledgeable fan would think \"I didn't know that!\"?",
+    "SEAMLESS LOOP: Does the last sentence connect back to the first sentence, creating a natural replay loop?",
+    "PACING: Does the script escalate tension — each revelation more shocking than the last — or does it feel flat and monotonous?"
+  ],
+  "coverage_dimensions": [
+    "topic identity and essential context",
+    "most important fact or event",
+    "interesting angle or surprising detail",
+    "significance or real-world impact",
+    "recent news or current relevance"
+  ]
 }

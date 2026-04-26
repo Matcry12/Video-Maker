@@ -2,18 +2,61 @@
   "skill_id": "did_you_know",
   "name": "Did You Know?",
   "description": "Curiosity-driven facts presented as surprising revelations. Each fact hits like insider knowledge the viewer was never supposed to find out. Rapid-fire 'did you know' triggers with escalating shock value.",
-  "trigger_keywords": ["did you know", "facts", "interesting facts", "surprising facts", "bet you didn't know", "things you didn't know", "mind blowing facts", "fun facts", "crazy facts", "insane facts", "facts about"],
-  "content_types": ["lore", "easter_eggs"],
-  "moods": ["shocking", "funny"],
+  "trigger_keywords": [
+    "did you know",
+    "facts",
+    "interesting facts",
+    "surprising facts",
+    "bet you didn't know",
+    "things you didn't know",
+    "mind blowing facts",
+    "fun facts",
+    "crazy facts",
+    "insane facts",
+    "facts about"
+  ],
+  "content_types": [
+    "lore",
+    "easter_eggs"
+  ],
+  "moods": [
+    "shocking",
+    "funny"
+  ],
   "structure": {
     "hook_rule": "Start with the MOST jaw-dropping fact wrapped in a 'Did you know...?' question. It must sound like forbidden insider knowledge — something the viewer will feel embarrassed they didn't already know. Never start generic.",
     "pacing_rule": "Each fact opens with a different curiosity trigger — rotate between: 'Did you know...', 'Here's something insane...', 'Most people have no idea that...', 'What nobody tells you is...', 'And get this...'. Keep facts to 1-2 sentences each. Punch, context, punch. Never explain for more than 20 words before the next revelation.",
     "ending_rule": "End with the WILDEST fact, then a callback that loops to the opening: '...and the craziest part? That connects right back to [hook detail].' The viewer should feel compelled to replay.",
     "tone": "Excited, conspiratorial — like sharing secrets with a friend who keeps saying 'NO WAY'. Fast but not breathless. Each fact lands before the next one hits.",
-    "transitions_en": ["But here's where it gets crazy...", "And if you thought that was wild...", "But wait, there's more...", "You know what's even crazier?"],
-    "transitions_vi": ["Nhưng đây mới là điều điên rồ nhất...", "Và nếu bạn nghĩ đó đã sốc...", "Nhưng chờ đã, còn nữa...", "Bạn có biết điều gì thú vị hơn không?"]
+    "transitions_en": [
+      "But here's where it gets crazy...",
+      "And if you thought that was wild...",
+      "But wait, there's more...",
+      "You know what's even crazier?"
+    ],
+    "transitions_vi": [
+      "Nhưng đây mới là điều điên rồ nhất...",
+      "Và nếu bạn nghĩ đó đã sốc...",
+      "Nhưng chờ đã, còn nữa...",
+      "Bạn có biết điều gì thú vị hơn không?"
+    ]
   },
   "prompt_injection": "FORMAT: 'Did you know?' revelation chain. Every fact must feel like a revelation the viewer was never supposed to find out. Rotate curiosity triggers — never use the same opener twice in a row. Build from surprising → shocking → MIND-BLOWING. The viewer should feel smarter after watching and immediately want to share these facts. Never sound like a textbook, Wikipedia article, or documentary narrator. You're the friend who just discovered something insane. Aim for 5-7 distinct facts woven into one flowing narration. Minimum 200 words.",
+  "extraction_hint": "A fact MATCHES if it would genuinely surprise a typical fan: behind-the-scenes decisions, creator insights, production accidents, unexpected origins, or statistical anomalies. A fact DOES NOT MATCH if it describes: events any casual viewer of the show/game/series already knows, basic plot events, or widely-reported mainstream facts. When in doubt: ask 'would someone who has watched/read this already know it?' If yes, reject it.",
   "example_hook_en": "Did you know that octopuses have THREE hearts? And when they fall in love, two of them stop. But that's not even the weirdest part.",
-  "example_hook_vi": "Bạn có biết rằng bạch tuộc có BA trái tim? Và khi yêu, hai trái tim ngừng đập. Nhưng đó chưa phải điều kỳ lạ nhất."
+  "example_hook_vi": "Bạn có biết rằng bạch tuộc có BA trái tim? Và khi yêu, hai trái tim ngừng đập. Nhưng đó chưa phải điều kỳ lạ nhất.",
+  "quality_gate_questions": [
+    "HOOK: Does the hook open with a fact specific and surprising enough to make someone stop scrolling?",
+    "SPECIFICITY: Are the facts specific — names, numbers, dates — rather than vague generalities?",
+    "NOVELTY: Is there at least one fact that even a devoted fan of this topic would likely not know?",
+    "CLOSER: Does the last fact create a sense of wonder or 'I have to share this' rather than trailing off?",
+    "PUNCH: Does each fact feel self-contained and punchy — no fact overstays its welcome with excess explanation?"
+  ],
+  "coverage_dimensions": [
+    "surprising fact 1 (hook-worthy opener)",
+    "surprising fact 2",
+    "surprising fact 3",
+    "surprising fact 4",
+    "most mind-blowing fact (closer)"
+  ]
 }

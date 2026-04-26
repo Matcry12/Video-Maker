@@ -7,12 +7,13 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from .editor_agent import run_editor
+from .editor_agent import run_editor, run_editor_lab
 from .image_agent import run_images
 from .models import AgentConfig, AgentPhase, AgentPlan, AgentResult, AgentState
 from .plan_agent import plan_from_prompt
 from .quality_gate import run_quality_gate
 from .research_agent import run_research
+from .rag_research_agent import run_agentic_research
 from .script_agent import run_script
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,8 @@ class VideoAgent:
         self._emit({"phase": "plan", "message": "Analyzing your request..."})
 
         plan = plan_from_prompt(prompt, user_config=user_config)
+        from .entity_sanitizer import forbidden_entities as _forbidden_entities
+        plan.forbidden_entities = _forbidden_entities(plan.topic, topic_aliases=plan.entity_aliases)
         self.state.plan = plan
         logger.info(
             "Agent plan: topic='%s', language='%s', style='%s', "
@@ -106,6 +109,7 @@ class VideoAgent:
         # Save plan
         _save_artifact(run_dir, "plan.json", {
             "prompt": prompt,
+            "user_prompt": plan.user_prompt,
             "topic": plan.topic,
             "language": plan.language,
             "style": plan.style,
@@ -113,6 +117,10 @@ class VideoAgent:
             "target_blocks": plan.target_blocks,
             "image_display": plan.image_display,
             "search_queries": plan.search_queries,
+            "entity_aliases": plan.entity_aliases,
+            "must_cover": plan.must_cover,
+            "entity_cards": plan.entity_cards,
+            "narrative_dynamic": plan.narrative_dynamic,
             "timestamp": run_ts,
         })
 
@@ -120,11 +128,20 @@ class VideoAgent:
         self.state.phase = AgentPhase.RESEARCH
         self._emit({"phase": "research", "message": f"Researching '{plan.topic}'..."})
 
-        research_result = run_research(
+        from ..agent_config import load_agent_settings as _load_settings
+        _research_mode = _load_settings().get("research_mode", "classic")
+        _research_fn = run_agentic_research if _research_mode == "agentic" else run_research
+
+        research_result = _research_fn(
             topic=plan.topic,
             search_queries=plan.search_queries,
             language=plan.language,
+            skill_id=(plan.user_overrides.skill_id or '') if plan.user_overrides else '',
+            topic_aliases=plan.entity_aliases,
             emit=self._emit,
+            user_prompt=plan.user_prompt,
+            must_cover=plan.must_cover,
+            topic_category=plan.topic_category,
         )
         all_warnings.extend(research_result.get("warnings", []))
 
@@ -156,19 +173,39 @@ class VideoAgent:
         self.state.phase = AgentPhase.QUALITY_GATE
         self._emit({"phase": "quality_gate", "message": "Evaluating script quality..."})
 
-        gate_result = run_quality_gate(script_result.script, plan.topic)
+        skill_id = script_result.writer_meta.get("skill_id", "") if script_result.writer_meta else ""
+        gate = run_quality_gate(script_result.script, plan=plan, facts=facts, skill_id=skill_id)
 
-        if not gate_result["passed"] and not gate_result.get("skipped", False):
+        if gate.skipped:
+            self._emit({
+                "phase": "quality_gate",
+                "message": f"QA partial (LLM skipped) det={gate.det_score}/50",
+                "det_score": gate.det_score,
+                "skipped": True,
+            })
+        else:
+            self._emit({
+                "phase": "quality_gate",
+                "message": f"QA det={gate.det_score}/50 llm={gate.llm_score}/50 ({gate.combined_score}/100)",
+                "det_score": gate.det_score,
+                "llm_score": gate.llm_score,
+                "combined_score": gate.combined_score,
+                "passed": gate.passed,
+            })
+
+        if not gate.passed and not gate.skipped:
             # Fail → one targeted rewrite with feedback
-            feedback = gate_result.get("feedback", "")
+            feedback_parts = list(gate.det_issues) + ([gate.llm_feedback] if gate.llm_feedback else [])
+            feedback = " | ".join(p for p in feedback_parts if p)
             if feedback:
                 self._emit({"phase": "quality_gate", "message": "Script needs improvement, rewriting..."})
                 all_warnings.append(
-                    f"Quality gate failed (yes={gate_result['yes_count']}/3). "
-                    f"Rewriting with feedback: {feedback[:100]}"
+                    f"Quality gate failed (det={gate.det_score}/50 llm={gate.llm_score}/50). "
+                    f"Rewriting with feedback: {feedback[:160]}"
                 )
 
                 # Re-run script agent with quality gate feedback as extra constraint
+                from .script_agent import apply_citation_cleanup
                 from ..content_sources.fact_script_writer import write_script_from_facts
                 from ..content_sources import lint_script
 
@@ -180,7 +217,11 @@ class VideoAgent:
                         style=plan.style or None,
                         extra_constraints=[f"Quality reviewer feedback: {feedback}"],
                     )
-                    rewrite_script = rewrite_result["script"]
+                    rewrite_script = apply_citation_cleanup(
+                        rewrite_result["script"],
+                        facts,
+                        all_warnings,
+                    )
                     rewrite_lint = lint_script(rewrite_script)
 
                     # Keep whichever is better
@@ -199,8 +240,17 @@ class VideoAgent:
                     all_warnings.append(f"Quality gate rewrite failed: {exc}")
             else:
                 all_warnings.append(
-                    f"Quality gate failed (yes={gate_result['yes_count']}/3) but no feedback provided."
+                    f"Quality gate failed (det={gate.det_score}/50 llm={gate.llm_score}/50) but no feedback provided."
                 )
+
+        # Ensure phrase windows are present (quality gate rewrite bypasses script_agent's window pass)
+        _blocks = script_result.script.get("blocks", [])
+        if _blocks and _blocks[0].get("text") and not _blocks[0].get("windows"):
+            try:
+                from ..images.phrase_windows import split_into_windows
+                _blocks[0]["windows"] = split_into_windows(_blocks[0]["text"], plan.topic)
+            except Exception:
+                pass
 
         # Save script after quality gate
         _save_artifact(run_dir, "script.json", script_result.script)
@@ -214,9 +264,20 @@ class VideoAgent:
         # Save final script with images attached
         _save_artifact(run_dir, "script_final.json", image_result.script)
 
+        # Inject subtitle preset from user config into script so manager picks it up
+        if user_config and user_config.subtitle_preset:
+            image_result.script["subtitle_preset"] = user_config.subtitle_preset
+
         # === PHASE 6: EDITOR ===
         self.state.phase = AgentPhase.EDITOR
-        editor_result = run_editor(image_result.script, output_name, emit=self._emit)
+        from ..agent_config import load_agent_settings
+        _settings = load_agent_settings()
+        _lab_cfg  = _settings.get("lab_editor", {}) or {}
+        _editor_mode = _lab_cfg.get("editor_mode", "classic")
+        if _editor_mode == "lab":
+            editor_result = run_editor_lab(image_result.script, output_name, emit=self._emit)
+        else:
+            editor_result = run_editor(image_result.script, output_name, emit=self._emit)
         self.state.video_path = editor_result.get("video_path")
         self.state.audio_path = editor_result.get("audio_path")
 
@@ -246,9 +307,13 @@ class VideoAgent:
                 "lint_status": script_result.lint_status,
                 "writer_meta": script_result.writer_meta,
                 "quality_gate": {
-                    "passed": gate_result["passed"],
-                    "yes_count": gate_result["yes_count"],
-                    "skipped": gate_result.get("skipped", False),
+                    "passed": gate.passed,
+                    "det_score": gate.det_score,
+                    "llm_score": gate.llm_score,
+                    "combined_score": gate.combined_score,
+                    "det_issues": gate.det_issues,
+                    "llm_feedback": gate.llm_feedback,
+                    "skipped": gate.skipped,
                 },
             },
         )

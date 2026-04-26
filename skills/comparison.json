@@ -2,18 +2,64 @@
   "skill_id": "comparison",
   "name": "Comparison / VS Battle",
   "description": "Head-to-head comparison or versus battle. Compares two or more subjects across multiple dimensions with dramatic tension, upset reveals, and a definitive winner — but always with a twist that keeps the debate alive.",
-  "trigger_keywords": ["vs", "versus", "comparison", "who wins", "battle", "fight", "better", "stronger", "which is", "who would win", "compared to", "or", "difference between", "match up", "face off"],
-  "content_types": ["comparison"],
-  "moods": ["epic", "funny"],
+  "trigger_keywords": [
+    "vs",
+    "versus",
+    "comparison",
+    "who wins",
+    "battle",
+    "fight",
+    "better",
+    "stronger",
+    "which is",
+    "who would win",
+    "compared to",
+    "or",
+    "difference between",
+    "match up",
+    "face off"
+  ],
+  "content_types": [
+    "comparison"
+  ],
+  "moods": [
+    "epic",
+    "funny"
+  ],
   "structure": {
     "hook_rule": "Open with the matchup and a PROVOCATIVE claim that challenges the popular pick: '[A] vs [B]. Everyone picks [A]. But the actual numbers tell a completely different story.' or 'Everyone says [A] would win. They're wrong, and I can prove it.' Create immediate tension and controversy.",
     "pacing_rule": "Compare across 3-4 specific dimensions (NOT generic categories). Each round should have a clear 'winner' for that dimension. Use fight commentary language: 'In round one...', 'But here's where it FLIPS...', 'And this is the round nobody expected...'. Save the DECISIVE, unexpected factor for last. Give the underdog at least one convincing round.",
     "ending_rule": "Reveal the winner with a twist nobody expected. Then add: 'But there's one specific scenario where the loser actually DESTROYS the winner...' or 'Unless you factor in [X], which changes everything.' Loop back to challenge the opening claim. Keep the debate alive.",
     "tone": "Championship fight commentator calling the biggest match of the year. Dramatic, energetic, slightly biased toward the underdog. Build tension like a boxing match — ebb and flow, not one-sided.",
-    "transitions_en": ["But in the next round...", "And this is where everything flips...", "It seemed clear, but...", "And the deciding factor is..."],
-    "transitions_vi": ["Nhưng ở vòng tiếp theo...", "Và đây là lúc mọi thứ đảo ngược...", "Tưởng như đã rõ ràng, nhưng...", "Và yếu tố quyết định là..."]
+    "transitions_en": [
+      "But in the next round...",
+      "And this is where everything flips...",
+      "It seemed clear, but...",
+      "And the deciding factor is..."
+    ],
+    "transitions_vi": [
+      "Nhưng ở vòng tiếp theo...",
+      "Và đây là lúc mọi thứ đảo ngược...",
+      "Tưởng như đã rõ ràng, nhưng...",
+      "Và yếu tố quyết định là..."
+    ]
   },
   "prompt_injection": "FORMAT: VS battle comparison with round-by-round structure. CRITICAL: Use concrete numbers, stats, feats, and specific examples — never vague 'one is stronger' claims. Structure: PROVOCATIVE MATCHUP HOOK → Round 1 (obvious winner) → Round 2 (upset/flip) → Round 3 (the clincher nobody expected) → WINNER REVEAL + twist caveat. Build tension like a real fight — let each side shine before the verdict. The winner reveal should feel EARNED, not arbitrary. End with a twist that keeps viewers debating in comments. Minimum 200 words.",
+  "extraction_hint": "A fact MATCHES if it contains: specific power levels, combat stats, measurable feats, records, or direct comparisons between the two subjects with concrete numbers. A fact DOES NOT MATCH if it describes: personality traits, appearance, generic character roles, or any quality without a measurable or comparative dimension. When in doubt: ask 'can this fact be used to argue one subject is stronger/better/faster than the other?' If no, reject it.",
   "example_hook_en": "Goku vs Saitama. Everyone picks Goku. But wait until you see what Saitama's feats actually prove.",
-  "example_hook_vi": "Goku vs Saitama. Ai cũng chọn Goku. Nhưng hãy đợi đến khi bạn thấy Saitama thực sự làm được gì."
+  "example_hook_vi": "Goku vs Saitama. Ai cũng chọn Goku. Nhưng hãy đợi đến khi bạn thấy Saitama thực sự làm được gì.",
+  "quality_gate_questions": [
+    "HOOK: Does the hook open with a bold 'who wins' or 'which is better' claim that challenges the popular pick?",
+    "SPECIFICITY: Is each side given a clear, specific advantage backed by concrete facts rather than vague impressions?",
+    "REVERSAL: Is there at least one surprising reversal where the expected loser wins a round?",
+    "RESOLUTION: Does the ending resolve the comparison with a verdict rather than leaving it completely open?",
+    "EVIDENCE: Is the comparison based on specific facts, stats, or feats rather than vibes?"
+  ],
+  "coverage_dimensions": [
+    "subject A identity and core strengths",
+    "subject B identity and core strengths",
+    "key performance or quality comparison (most important metric)",
+    "secondary comparison or surprising differentiator",
+    "fan and critic consensus on which is better and why"
+  ]
 }

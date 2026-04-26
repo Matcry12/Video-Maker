@@ -2,18 +2,69 @@
   "skill_id": "explained",
   "name": "Explained in 60 Seconds",
   "description": "Fast educational breakdown that makes complex topics feel simple and fascinating in under 60 seconds. The viewer goes from 'I have no idea what that is' to 'oh, I totally get it now' in one video. Works for science concepts, how things work, systems explained, power systems, tech explanations.",
-  "trigger_keywords": ["explained", "how does", "how it works", "what is", "why does", "explain simply", "in 60 seconds", "simple explanation", "breakdown explained", "quick explanation", "easy explanation", "for dummies", "simplified explanation", "help me understand", "explain like", "power system explained", "how to understand", "explained simply"],
-  "content_types": ["explained", "lore", "theory"],
-  "moods": ["epic", "funny"],
+  "trigger_keywords": [
+    "explained",
+    "how does",
+    "how it works",
+    "what is",
+    "why does",
+    "explain simply",
+    "in 60 seconds",
+    "simple explanation",
+    "breakdown explained",
+    "quick explanation",
+    "easy explanation",
+    "for dummies",
+    "simplified explanation",
+    "help me understand",
+    "explain like",
+    "power system explained",
+    "how to understand",
+    "explained simply"
+  ],
+  "content_types": [
+    "explained",
+    "lore",
+    "theory"
+  ],
+  "moods": [
+    "epic",
+    "funny"
+  ],
   "structure": {
     "hook_rule": "Open with a RELATABLE confusion point, then promise clarity: '[Topic] confuses EVERYONE. But here's the thing — it's actually stupidly simple once you see it this way.' or 'I'm going to explain [complex topic] in 60 seconds. And after this, you'll understand it better than 99% of people.' The hook should make the viewer feel this will save them hours of confusion.",
     "pacing_rule": "Use the LAYER method: START SIMPLE (the one-sentence version) → ADD LAYER 1 (the interesting nuance) → ADD LAYER 2 (the part that clicks everything into place) → BONUS (the detail that makes them feel like an expert). Each layer builds on the last. Use analogies from everyday life to explain complex concepts. Never use jargon without immediately explaining it in simple terms.",
     "ending_rule": "End with the 'expert insight' — one detail that separates casual understanding from deep knowledge: 'And here's the part most explanations leave out...' Then loop: 'And THAT'S why [callback to the confusing thing from the hook] actually makes perfect sense.'",
     "tone": "That one friend who's really good at explaining things — makes you feel smart, not stupid. Casual but precise. Uses 'basically', 'think of it like', 'imagine'. Never academic or lecturing.",
-    "transitions_en": ["But here's the part that clicks...", "Now here's where it gets interesting...", "Think of it like this...", "And that's why..."],
-    "transitions_vi": ["Nhưng đây là phần mà mọi thứ sẽ rõ ràng...", "Và đây là lúc nó trở nên thú vị...", "Hãy nghĩ thế này...", "Và đó là lý do tại sao..."]
+    "transitions_en": [
+      "But here's the part that clicks...",
+      "Now here's where it gets interesting...",
+      "Think of it like this...",
+      "And that's why..."
+    ],
+    "transitions_vi": [
+      "Nhưng đây là phần mà mọi thứ sẽ rõ ràng...",
+      "Và đây là lúc nó trở nên thú vị...",
+      "Hãy nghĩ thế này...",
+      "Và đó là lý do tại sao..."
+    ]
   },
   "prompt_injection": "FORMAT: Rapid educational breakdown with progressive layering. Structure: RELATABLE CONFUSION HOOK → ONE-SENTENCE VERSION (the simplest possible explanation) → LAYER 1 (the interesting 'but actually...') → LAYER 2 (the click moment — use an analogy) → EXPERT DETAIL (what most explanations miss) → CLARITY CALLBACK (loop to hook). CRITICAL: Use analogies and comparisons to everyday things. 'Quantum entanglement is basically like...' > 'Quantum entanglement is the phenomenon whereby...'. Never use jargon without a simple equivalent. The viewer should feel SMARTER, not overwhelmed. Keep it conversational — 'basically', 'think of it like', 'here's the trick'. Minimum 200 words.",
+  "extraction_hint": "A fact MATCHES if it clearly explains: how something works, why a decision was made, what caused an event, or the underlying mechanics behind something the audience sees. Basic and foundational facts are acceptable — explanation is the goal, not surprise. A fact DOES NOT MATCH if it is: a vague statement without explanatory value, or pure plot recap with no 'why/how' dimension. When in doubt: ask 'does this help the viewer understand something they were confused about?' If yes, keep it.",
   "example_hook_en": "[Topic] sounds complicated, right? Here's the secret — it's actually really simple once you see it this way.",
-  "example_hook_vi": "[Topic] nghe phức tạp đúng không? Bí mật là — nó thực ra cực kỳ đơn giản khi bạn nhìn theo cách này."
+  "example_hook_vi": "[Topic] nghe phức tạp đúng không? Bí mật là — nó thực ra cực kỳ đơn giản khi bạn nhìn theo cách này.",
+  "quality_gate_questions": [
+    "HOOK: Does the hook pose a clear 'why' or 'how' question that the video will definitively answer?",
+    "LAYERING: Is the explanation built step by step rather than dumping all concepts at once?",
+    "ANALOGY: Is there at least one analogy or comparison to everyday life that makes a complex idea immediately accessible?",
+    "CLARITY: Does the ending confirm the viewer now understands the concept — not just that it was explained?",
+    "JARGON: Is jargon either avoided entirely or immediately defined in plain language when first introduced?"
+  ],
+  "coverage_dimensions": [
+    "what it is (clear one-sentence definition)",
+    "how it works or why it happens (core mechanics)",
+    "common misconception most people have about it",
+    "origin story or real-world parallel that makes it relatable",
+    "expert detail most explanations skip"
+  ]
 }

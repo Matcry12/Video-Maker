@@ -1,0 +1,13 @@
+You are refining a video script based on feedback.
+
+VIDEO GOAL: {video_goal}
+REQUIRED ANGLES: {must_cover}
+
+CURRENT SCRIPT DRAFT:
+{script_draft}
+
+FEEDBACK TO ADDRESS:
+{feedback}
+
+Rewrite the script to fix the feedback while keeping all required angles covered.
+Return the same strict JSON shape as the original script.

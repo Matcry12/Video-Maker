@@ -100,7 +100,11 @@ def lint_script(
     texts = [b.get("text", "") for b in blocks]
 
     # --- TOO_FEW_BLOCKS (-15) ---
-    if len(blocks) < 3:
+    # Exempt single-block scripts that are long enough to be continuous narration (≥150 words).
+    # The single-block design is intentional — it's later split into phrase windows for
+    # per-moment image variety. Only penalise truly minimal scripts.
+    _single_long_block = len(blocks) == 1 and len(texts[0].split()) >= 150
+    if len(blocks) < 3 and not _single_long_block:
         score -= 15
         issues.append({
             "code": "TOO_FEW_BLOCKS",

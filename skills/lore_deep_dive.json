@@ -2,18 +2,66 @@
   "skill_id": "lore_deep_dive",
   "name": "Lore Deep Dive",
   "description": "Deep exploration of worldbuilding, lore, timeline connections, and hidden meaning. Goes beyond surface to reveal how pieces connect, what the deeper significance is, and why it all matters. For viewers who want to truly UNDERSTAND a universe.",
-  "trigger_keywords": ["lore", "deep dive", "worldbuilding", "timeline", "connected", "lore explained", "universe", "mythology", "backstory", "origin story", "history of", "explained", "full story", "complete guide", "everything about", "deeper meaning"],
-  "content_types": ["lore"],
-  "moods": ["epic", "dark_mystery", "emotional"],
+  "trigger_keywords": [
+    "lore",
+    "deep dive",
+    "worldbuilding",
+    "timeline",
+    "connected",
+    "lore explained",
+    "universe",
+    "mythology",
+    "backstory",
+    "origin story",
+    "history of",
+    "explained",
+    "full story",
+    "complete guide",
+    "everything about",
+    "deeper meaning"
+  ],
+  "content_types": [
+    "lore"
+  ],
+  "moods": [
+    "epic",
+    "dark_mystery",
+    "emotional"
+  ],
   "structure": {
     "hook_rule": "Open with a CONNECTION that ties the whole lore together — something that reframes everything: 'Everything in [topic] connects to ONE single event. And once you see it, the entire story changes.' Promise a revelation that transforms the viewer's understanding. Make them feel like they've been looking at the story wrong.",
     "pacing_rule": "Build the lore like assembling a puzzle. Start with a known element the viewer recognizes, then reveal how it connects to something unexpected. Use 'And this is where it gets deep...', 'Now connect this to...', 'And THAT'S why...'. Each piece should CLICK into place satisfyingly. Never dump information — reveal it. Accelerate toward the final connection.",
     "ending_rule": "Zoom out to show how ALL the pieces form one coherent picture the viewer never saw before. Then hint at an even deeper layer: 'But there's one more piece of this puzzle that nobody has found yet...' or 'And this is just the first layer.' Loop back to the opening with the full picture now visible.",
     "tone": "Passionate lore scholar who's been researching this for years and just made a breakthrough connection. Reverent toward the source material but genuinely excited by their discovery. Think 'I can't believe nobody else noticed this.'",
-    "transitions_en": ["And here's where it all connects...", "Now link this back to...", "But it goes even deeper...", "And when you put it all together..."],
-    "transitions_vi": ["Và đây là nơi mọi thứ kết nối...", "Bây giờ hãy liên hệ điều này với...", "Nhưng còn sâu hơn thế...", "Và khi bạn ghép tất cả lại..."]
+    "transitions_en": [
+      "And here's where it all connects...",
+      "Now link this back to...",
+      "But it goes even deeper...",
+      "And when you put it all together..."
+    ],
+    "transitions_vi": [
+      "Và đây là nơi mọi thứ kết nối...",
+      "Bây giờ hãy liên hệ điều này với...",
+      "Nhưng còn sâu hơn thế...",
+      "Và khi bạn ghép tất cả lại..."
+    ]
   },
   "prompt_injection": "FORMAT: Lore deep dive with CONNECTION-driven structure. CRITICAL: Never just list facts — show how they CONNECT. Structure: REFRAMING HOOK → Known Element → Surprising Connection #1 → Deeper Connection #2 → The Breakthrough Connection (everything clicks) → 'There's more' closer. Use phrases like 'This connects to...', 'And if we trace this back...', 'The reason this matters is...', 'And THAT explains why...'. The viewer should experience an 'aha!' moment where the whole picture snaps into focus. Build connections chronologically or thematically, not randomly. Minimum 200 words.",
+  "extraction_hint": "A fact MATCHES if it reveals: specific in-universe rules, named lore events, world-building mechanics, obscure relationships between factions or characters, or details that expand understanding of how the world works. A fact DOES NOT MATCH if it is: a surface-level plot summary, a character description without lore context, or a fact any casual fan would already know. When in doubt: ask 'does this fact reveal something specific about how the world/system works that a newcomer wouldn't know?' If no, reject it.",
   "example_hook_en": "Everything in [topic] traces back to one moment nobody talks about. And once you see it, the entire story changes.",
-  "example_hook_vi": "Mọi thứ trong [topic] đều dẫn về một khoảnh khắc mà không ai nhắc đến. Và khi bạn nhìn ra, toàn bộ câu chuyện sẽ thay đổi."
+  "example_hook_vi": "Mọi thứ trong [topic] đều dẫn về một khoảnh khắc mà không ai nhắc đến. Và khi bạn nhìn ra, toàn bộ câu chuyện sẽ thay đổi.",
+  "quality_gate_questions": [
+    "HOOK: Does the hook reference a specific lore detail rather than vaguely promising 'the world is complex'?",
+    "CONNECTION: Is the lore connected to something the viewer already knows, creating a genuine 'aha' moment?",
+    "DEPTH: Is there at least one detail that even dedicated lore experts would find surprising or overlooked?",
+    "REVELATION: Does the script build toward a 'so the whole world is actually...' revelation that reframes everything?",
+    "IN-UNIVERSE: Does each lore point have an in-universe reason or cause — not just 'the author decided it this way'?"
+  ],
+  "coverage_dimensions": [
+    "known lore element viewers already recognize",
+    "first surprising lore connection or hidden detail",
+    "deeper lore detail most fans miss",
+    "in-world rule or mechanic that explains multiple events",
+    "unresolved mystery or open question in the lore"
+  ]
 }

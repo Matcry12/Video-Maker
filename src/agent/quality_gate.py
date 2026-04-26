@@ -1,86 +1,134 @@
-"""Quality Gate — quick LLM check before expensive rendering."""
+"""Quality gate: deterministic checks + LLM judge.
 
-import json
+Returns GateResult with a combined score. Pipeline shall:
+  - treat passed=False as a signal to rewrite once
+  - never silently skip the gate (skipped=True is still recorded)
+"""
+from __future__ import annotations
+
 import logging
 import os
-import re
-import time
-from typing import Any, Optional
+from dataclasses import dataclass, field
+
+from src.agent.gate_deterministic import run_deterministic_checks
+from src.agent.robust_json import extract_json_dict, parse_yes_no
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM_PROMPT = """\
-You are a brutally honest YouTube Shorts script evaluator optimized for viewer retention and algorithm performance. Answer five yes/no questions about the script, then identify the weakest part.
 
-Questions:
-1. HOOK: Does the FIRST sentence contain a shocking fact, bold claim, or curiosity gap that would stop a viewer from scrolling? (Reject if it starts with character introduction, plot summary, or "In [year]...")
-2. LORE vs RECAP: Does the script reveal HIDDEN details, theories, or dark secrets — or is it just a basic plot summary that any fan already knows?
-3. SURPRISE: Is there at least one moment where even a knowledgeable fan would think "I didn't know that!"?
-4. SEAMLESS LOOP: Does the last sentence connect back to the first sentence, creating a natural replay loop? (The ending should feel like a cliffhanger, not a dead-end conclusion.)
-5. PACING: Does the script escalate tension — each revelation more shocking than the last — or does it feel flat and monotonous?
-
-Respond ONLY with strict JSON — no markdown, no explanation:
-{"q1": "yes"|"no", "q2": "yes"|"no", "q3": "yes"|"no", "q4": "yes"|"no", "q5": "yes"|"no", "weakest_part": "..."}
-"""
+@dataclass
+class GateResult:
+    passed: bool
+    det_score: int = 0         # 0..60
+    llm_yes: int = 0           # 0..5
+    llm_score: int = 0         # 0..50
+    combined_score: int = 0    # 0..100
+    det_issues: list[str] = field(default_factory=list)
+    llm_feedback: str = ""
+    skipped: bool = False
 
 
-def run_quality_gate(
-    script: dict[str, Any],
-    topic: str,
-) -> dict[str, Any]:
-    """Evaluate script quality with 3 yes/no questions.
+_DEFAULT_QUESTIONS = [
+    "HOOK: Does the FIRST sentence contain a shocking fact, bold claim, or curiosity gap that stops a scrolling viewer?",
+    "LORE vs RECAP: Does the script reveal hidden details/theories/dark secrets rather than basic plot summary?",
+    "SURPRISE: Is there at least ONE moment where a knowledgeable fan would think 'I didn't know that'?",
+    "SEAMLESS LOOP: Does the last sentence connect back to the first, creating a natural replay loop?",
+    "PACING: Does the script escalate tension (each revelation more surprising than the last) or feel flat and monotonous?",
+]
 
-    Returns {"passed": bool, "yes_count": int, "feedback": str, "skipped": bool}
 
-    - 2-3 "yes" → PASS
-    - 0-1 "yes" → FAIL with feedback for rewrite
-    - No API key or error → skipped=True, passed=True (don't block rendering)
-    """
-    api_key = os.environ.get("GROQ_API_KEY", "")
-    if not api_key:
-        logger.info("quality_gate: no GROQ_API_KEY — skipping")
-        return {"passed": True, "yes_count": 0, "feedback": "", "skipped": True}
-
-    model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
-
-    blocks = script.get("blocks") or script.get("segments") or []
-    script_text = " ".join(
-        b.get("text", "") for b in blocks if isinstance(b, dict)
-    ).strip()
-    if not script_text:
-        logger.info("quality_gate: empty script text — skipping")
-        return {"passed": True, "yes_count": 0, "feedback": "", "skipped": True}
-
-    user_message = f"Topic: {topic}\n\nScript:\n{script_text}"
-
+def _load_skill_questions(skill_id: str) -> list[str]:
+    if not skill_id:
+        return _DEFAULT_QUESTIONS
     try:
-        from ..llm_client import chat_completion
+        from pathlib import Path
+        import json
+        project_root = Path(__file__).resolve().parent.parent.parent
+        path = project_root / "skills" / f"{skill_id}.json"
+        if not path.exists():
+            return _DEFAULT_QUESTIONS
+        data = json.loads(path.read_text(encoding="utf-8"))
+        qs = data.get("quality_gate_questions")
+        if isinstance(qs, list) and len(qs) == 5 and all(isinstance(q, str) for q in qs):
+            return qs
+        logger.warning("skill %r has %d quality_gate_questions (expected 5) — using defaults",
+                       skill_id, len(qs) if isinstance(qs, list) else 0)
+    except Exception as exc:
+        logger.debug("load skill questions failed: %s", exc)
+    return _DEFAULT_QUESTIONS
 
-        raw = chat_completion(
-            system=_SYSTEM_PROMPT,
-            user=user_message,
-            model=model,
-            temperature=0.3,
-            timeout=20.0,
-        )
 
-        # Strip markdown code fences if present
-        cleaned = re.sub(r"```(?:json)?\s*|\s*```", "", raw).strip()
-        # Extract first JSON object
-        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if not match:
-            raise ValueError(f"No JSON object found in response: {raw!r}")
+_SYSTEM_TEMPLATE = (
+    "You are a brutally honest YouTube Shorts script evaluator optimized for "
+    "viewer retention and algorithm performance.\n\n"
+    "Respond ONLY with strict JSON — no markdown, no prose, no explanation:\n"
+    '{"q1":"yes"|"no","q2":"yes"|"no","q3":"yes"|"no","q4":"yes"|"no","q5":"yes"|"no","weakest_part":"one short sentence describing the single weakest aspect"}'
+)
 
-        data = json.loads(match.group())
-        yes_count = sum(
-            1 for key in ("q1", "q2", "q3", "q4", "q5") if str(data.get(key, "")).lower() == "yes"
-        )
-        passed = yes_count >= 3
-        feedback = data.get("weakest_part", "")
 
-        logger.info("quality_gate: yes_count=%d passed=%s", yes_count, passed)
-        return {"passed": passed, "yes_count": yes_count, "feedback": feedback, "skipped": False}
+def _build_user_prompt(script: dict, topic: str, questions: list[str]) -> str:
+    blocks = script.get("blocks") or []
+    joined = "\n\n".join(f"[B{i}] {b.get('text','')}" for i, b in enumerate(blocks))
+    q_lines = "\n".join(f"q{i+1}: {q}" for i, q in enumerate(questions))
+    return (
+        f"TOPIC: {topic}\n\n"
+        f"SCRIPT:\n{joined}\n\n"
+        f"EVALUATE EACH QUESTION:\n{q_lines}\n\n"
+        "Return the JSON now."
+    )
 
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("quality_gate: error (%s) — skipping gate", exc)
-        return {"passed": True, "yes_count": 0, "feedback": "", "skipped": True}
+
+def run_quality_gate(script: dict, plan=None, facts=None, skill_id: str = "") -> GateResult:
+    # -------- Deterministic pass (always runs, no API needed) -----------
+    if plan is not None:
+        det_score, det_issues = run_deterministic_checks(script, plan)
+    else:
+        det_score, det_issues = 0, ["plan unavailable"]
+
+    # -------- LLM pass (skipped if no API key) --------------------------
+    llm_yes = 0
+    llm_feedback = ""
+    skipped = False
+    api_key = os.environ.get("GROQ_API_KEY") or os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        skipped = True
+        logger.warning("quality_gate: no API key set — deterministic only")
+    else:
+        questions = _load_skill_questions(skill_id)
+        topic = getattr(plan, "topic", "") if plan else script.get("topic", "")
+        system = _SYSTEM_TEMPLATE
+        user = _build_user_prompt(script, topic, questions)
+        try:
+            from src.llm_client import chat_completion
+            raw = chat_completion(
+                system=system, user=user, stage="quality_gate",
+                temperature=0.3, timeout=25.0,
+            )
+            data = extract_json_dict(raw) or {}
+            llm_yes = sum(1 for k in ("q1", "q2", "q3", "q4", "q5")
+                          if parse_yes_no(data.get(k)))
+            llm_feedback = str(data.get("weakest_part") or "").strip()
+        except Exception as exc:
+            logger.warning("quality_gate LLM call failed: %s", exc)
+            skipped = True
+
+    llm_score = llm_yes * 10
+    combined = det_score + llm_score
+
+    # Pass rules (all must hold):
+    #   det_score >= 40   (at most one det check can be a partial/failure)
+    #   llm_yes  >= 3    (majority of judge questions pass) OR gate was skipped
+    #   combined >= 80
+    llm_ok = (llm_yes >= 3) or skipped
+    passed = (det_score >= 48) and llm_ok and (combined >= 88 or skipped)
+
+    return GateResult(
+        passed=passed,
+        det_score=det_score,
+        llm_yes=llm_yes,
+        llm_score=llm_score,
+        combined_score=combined,
+        det_issues=det_issues,
+        llm_feedback=llm_feedback,
+        skipped=skipped,
+    )

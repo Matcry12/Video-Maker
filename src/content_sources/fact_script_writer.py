@@ -12,13 +12,20 @@ import json
 import logging
 import os
 import re
+from pathlib import Path as _Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger(__name__)
+from src.prompts import render as _render_prompt
 
-DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+_PROMPT_DIR = _Path(__file__).parent.parent.parent / "prompts"
+
+
+def _load_prompt(name: str) -> str:
+    return (_PROMPT_DIR / name).read_text(encoding="utf-8")
+
+logger = logging.getLogger(__name__)
 
 BLOCK_ROLES = ("hook", "setup", "twist", "reveal", "consequence", "payoff")
 
@@ -50,6 +57,7 @@ class RankedFact(BaseModel):
     score: float = 0.0
     suggested_role: str = ""
     reason_tags: list[str] = Field(default_factory=list)
+    fact_id: str = ""
 
 
 def write_script_from_facts(
@@ -58,9 +66,11 @@ def write_script_from_facts(
     language: str = "en-US",
     target_blocks: int = 6,
     style: str | None = None,
-    timeout_sec: float = 25.0,
+    timeout_sec: float = 45.0,
     extra_constraints: list[str] | None = None,
     skill: dict | None = None,
+    video_goal: str = "",
+    must_cover: str = "",
 ) -> dict:
     """
     Convert ranked facts into a narration script.
@@ -75,10 +85,7 @@ def write_script_from_facts(
     groq_key = os.getenv("GROQ_API_KEY", "").strip()
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not groq_key and not gemini_key:
-        logger.warning("No LLM API key set (GROQ_API_KEY / GEMINI_API_KEY); using direct fallback.")
-        return _fallback_script(parsed_facts, language)
-
-    model = os.getenv("GROQ_MODEL", "").strip() or DEFAULT_GROQ_MODEL
+        raise RuntimeError("Script LLM unavailable: no GROQ_API_KEY or GEMINI_API_KEY set.")
 
     try:
         script, meta = _generate_via_llm(
@@ -86,14 +93,14 @@ def write_script_from_facts(
             language=language,
             target_blocks=target_blocks,
             style=style,
-            model=model,
             timeout_sec=timeout_sec,
             extra_constraints=extra_constraints,
             skill=skill,
+            video_goal=video_goal,
+            must_cover=must_cover,
         )
     except Exception as exc:
-        logger.error("LLM script generation failed: %s", exc)
-        return _fallback_script(parsed_facts, language)
+        raise RuntimeError(f"Script LLM unavailable: {exc}") from exc
 
     # Skip anti-repetition retry if caller already provided constraints
     if extra_constraints:
@@ -109,10 +116,11 @@ def write_script_from_facts(
                 language=language,
                 target_blocks=target_blocks,
                 style=style,
-                model=model,
                 timeout_sec=timeout_sec,
                 extra_constraints=issues,
                 skill=skill,
+                video_goal=video_goal,
+                must_cover=must_cover,
             )
             meta = retry_meta
         except Exception as exc:
@@ -149,17 +157,89 @@ def _empty_result(language: str) -> dict:
     }
 
 
-def _fallback_script(facts: list[RankedFact], language: str) -> dict:
-    sorted_facts = sorted(facts, key=lambda f: f.score, reverse=True)
-    blocks: list[dict[str, str]] = []
-    for fact in sorted_facts:
-        text = fact.hook_text.strip() or fact.fact_text.strip()
-        if text:
-            blocks.append({"text": text})
-    return {
-        "script": {"language": language, "blocks": blocks},
-        "meta": {"provider": "fallback", "warnings": ["LLM unavailable; direct assembly used."]},
-    }
+def _build_system_prompt(
+    facts: list[RankedFact],
+    *,
+    language: str,
+    target_blocks: int,
+    style: str | None,
+    extra_constraints: list[str] | None = None,
+    skill: dict | None = None,
+    video_goal: str = "",
+    must_cover: str = "",
+) -> str:
+    structure = skill.get("structure", {}) if skill else {}
+    is_vietnamese = language.startswith("vi")
+
+    if skill and skill.get("structure", {}).get("tone"):
+        skill_tone = skill["structure"]["tone"]
+    elif style:
+        skill_tone = style
+    else:
+        skill_tone = "fast, curiosity-driven short-form narration with sharp pacing and spoken rhythm."
+
+    hook_rule = structure.get("hook_rule") or (
+        "Scan ALL the facts. Find the MOST SHOCKING one (a death count, a dark secret, "
+        "a betrayal, a mind-blowing number). Put it FIRST.\n"
+        "- The first sentence must make viewers think 'WHAT?! I need to know more.'\n"
+        "- TEMPLATE: '[Shocking statement]. [Question that creates curiosity]. [Promise of revelation].'"
+    )
+
+    pacing_rule = structure.get("pacing_rule") or (
+        "Alternate sentence length: short punch, then longer context, then short punch.\n"
+        "- Every 6 seconds of audio (roughly 15-20 words), there should be a new revelation or twist."
+    )
+
+    if skill:
+        example_hook = skill.get("example_hook_vi" if is_vietnamese else "example_hook_en", "")
+    else:
+        example_hook = ""
+    if not example_hook:
+        example_hook = (
+            "Good: 'This city was abandoned overnight. 350,000 people just... left.'"
+        )
+    # Substitute [topic] placeholder with the actual topic so the LLM doesn't copy it literally
+    _topic_sub = video_goal or "the topic"
+    example_hook = example_hook.replace("[topic]", _topic_sub).replace("[myth]", _topic_sub).replace("[theory]", _topic_sub)
+    hook_rule = hook_rule.replace("[topic]", _topic_sub).replace("[year]", "the year")
+
+    # Build citation requirement block
+    facts_with_ids = [f for f in facts if f.fact_id]
+    if facts_with_ids:
+        fact_list_with_ids = "\n".join(
+            f"{f.fact_id}: {f.fact_text[:150]}" for f in facts_with_ids
+        )
+        citation_requirement = (
+            "CITATION REQUIREMENT:\n"
+            "You are writing from research facts, each labeled with an ID like F001, F002, etc.\n"
+            "At the END of every sentence that uses a fact, append the citation in square brackets:\n"
+            '  "Subaru\'s ability lets him return to a save point. [F001]"\n'
+            '  "The creator rewrote the opening arc. [F003, F004]"\n'
+            "\nRules:\n"
+            "- A sentence may cite multiple facts: [F001, F002].\n"
+            "- Every declarative sentence in the body MUST cite at least one fact.\n"
+            "- The hook (first sentence) and the closing loop-back sentence do not require citations.\n"
+            "- Do NOT invent F-numbers that weren't provided.\n"
+            "- Do NOT cite facts whose IDs are not in the provided list.\n"
+            "\nFACTS (cite by ID):\n"
+            f"{fact_list_with_ids}"
+        )
+    else:
+        citation_requirement = ""
+
+    skill_prompt_injection = (skill.get("prompt_injection", "") or "") if skill else ""
+
+    return _render_prompt(
+        "script_write",
+        video_goal=video_goal or "",
+        must_cover=must_cover or "",
+        skill_tone=skill_tone,
+        skill_hook_rule=hook_rule,
+        skill_pacing_rule=pacing_rule,
+        skill_example_hook=example_hook,
+        skill_prompt_injection=skill_prompt_injection,
+        citation_requirement=citation_requirement,
+    )
 
 
 def _generate_via_llm(
@@ -168,12 +248,23 @@ def _generate_via_llm(
     language: str,
     target_blocks: int,
     style: str | None,
-    model: str,
     timeout_sec: float,
     extra_constraints: list[str] | None = None,
     skill: dict | None = None,
+    video_goal: str = "",
+    must_cover: str = "",
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    prompt = _build_prompt(
+    system_prompt = _build_system_prompt(
+        facts,
+        language=language,
+        target_blocks=target_blocks,
+        style=style,
+        extra_constraints=extra_constraints,
+        skill=skill,
+        video_goal=video_goal,
+        must_cover=must_cover,
+    )
+    user_message = _build_user_message(
         facts,
         language=language,
         target_blocks=target_blocks,
@@ -182,27 +273,24 @@ def _generate_via_llm(
         skill=skill,
     )
 
-    from ..llm_client import chat_completion
+    from ..llm_client import chat_completion_with_meta
 
-    content = chat_completion(
-        system=(
-            "You write short-video narration scripts from fact lists. "
-            "Return strict JSON only. Do not invent facts not in the input."
-        ),
-        user=prompt,
-        model=model,
+    resp = chat_completion_with_meta(
+        system=system_prompt,
+        user=user_message,
+        stage="script",
         temperature=0.3,
         timeout=timeout_sec,
     )
-    if not content:
+    if not resp.text:
         raise RuntimeError("LLM returned empty content.")
 
-    script = _parse_script_json(content)
+    script = _parse_script_json(resp.text)
     _validate_script_shape(script)
 
     meta: dict[str, Any] = {
-        "provider": "groq",
-        "model": model,
+        "provider": resp.provider,
+        "model": resp.model,
         "target_blocks": target_blocks,
         "input_facts": len(facts),
         "output_blocks": len(script.get("blocks", [])),
@@ -211,7 +299,7 @@ def _generate_via_llm(
     return script, meta
 
 
-def _build_prompt(
+def _build_user_message(
     facts: list[RankedFact],
     *,
     language: str,
@@ -220,8 +308,6 @@ def _build_prompt(
     extra_constraints: list[str] | None = None,
     skill: dict | None = None,
 ) -> str:
-    normalized_blocks = max(1, int(target_blocks))
-
     facts_payload: list[dict[str, Any]] = []
     for i, f in enumerate(facts):
         entry: dict[str, Any] = {
@@ -236,14 +322,6 @@ def _build_prompt(
             entry["tags"] = f.reason_tags
         facts_payload.append(entry)
 
-    # --- Skill-aware style hint ---
-    if skill and skill.get("structure", {}).get("tone"):
-        style_hint = f"Style hint: {skill['structure']['tone']}."
-    elif style:
-        style_hint = f"Style hint: {style}."
-    else:
-        style_hint = "Style hint: fast, curiosity-driven short-form narration with sharp pacing and spoken rhythm."
-
     constraint_block = ""
     if extra_constraints:
         constraint_block = (
@@ -252,139 +330,32 @@ def _build_prompt(
             + "\n"
         )
 
-    # --- Build skill-specific sections or use defaults ---
-    structure = skill.get("structure", {}) if skill else {}
-
-    hook_rule = structure.get("hook_rule") or (
-        "Scan ALL the facts. Find the MOST SHOCKING one (a death count, a dark secret, "
-        "a betrayal, a mind-blowing number). Put it FIRST.\n"
-        "- The first sentence must make viewers think 'WHAT?! I need to know more.'\n"
-        "- TEMPLATE: '[Shocking statement]. [Question that creates curiosity]. [Promise of revelation].'"
-    )
-
-    pacing_rule = structure.get("pacing_rule") or (
-        "Alternate sentence length: short punch, then longer context, then short punch.\n"
-        "- Every 6 seconds of audio (roughly 15-20 words), there should be a new revelation or twist."
-    )
-
-    ending_rule = structure.get("ending_rule") or (
-        "The LAST sentence must grammatically and semantically CONNECT BACK to the FIRST sentence.\n"
-        "- Viewers who let the video replay will hear a continuous, coherent loop.\n"
-        "- The ending should feel like a cliffhanger that the hook answers."
-    )
-
-    # Language-aware transitions
-    is_vietnamese = language.startswith("vi")
-    if is_vietnamese:
-        transitions = structure.get("transitions_vi") or structure.get("transitions") or [
-            "Nhưng đó chưa phải tất cả...", "Điều thú vị hơn là...",
-            "Nhưng chờ đã...", "Và đây là phần điên rồ nhất...",
-        ]
-    else:
-        transitions = structure.get("transitions_en") or structure.get("transitions") or [
-            "But that's not even the craziest part...", "And here's where it gets insane...",
-            "But wait...", "Now here's the thing nobody talks about...",
-        ]
-    transitions_str = ", ".join(f"'{t}'" for t in transitions)
-
-    # Skill-specific hook examples
-    if skill:
-        example_hook = skill.get("example_hook_vi" if is_vietnamese else "example_hook_en", "")
-    else:
-        example_hook = ""
-
-    # Skill prompt injection
-    skill_injection = ""
-    if skill and skill.get("prompt_injection"):
-        skill_injection = f"\nSKILL FORMAT:\n{skill['prompt_injection']}\n"
-
-    prompt = (
-        "Build a VIRAL YouTube Shorts narration script from the ranked facts below.\n"
-        "Your goal: make viewers STOP scrolling, watch the ENTIRE video, and REPLAY it.\n"
-        "\n"
-        "WRITING RULES:\n"
-        "1) Write ONE SINGLE continuous block of narration. Do NOT split into multiple blocks.\n"
-        f"2) Use natural conjunction words and transitions to connect all facts into a flowing story.\n"
-        f"   Good transitions: {transitions_str}\n"
-        "3) Short, punchy sentences for voice-over. No filler or generic documentary tone.\n"
-        "4) Concrete details over broad framing.\n"
-        "5) Do not repeat the same number more than twice.\n"
-        "6) Do not reuse strong adjectives (staggering, devastating, massive, haunting, "
-        "catastrophic, unprecedented, deadly, horrifying).\n"
-        "7) Each fact must add new information or escalate stakes.\n"
-        "8) Do not invent facts not present in the input.\n"
-        "9) The single block must contain ALL facts woven together as one continuous narration.\n"
-        "10) Total script must be at least 200 words. A video under 60 seconds is too short.\n"
-        "\n"
-        f"HOOK (CRITICAL — this decides if viewers stay or scroll away):\n"
-        f"- {hook_rule}\n"
-        "- NEVER start with character introduction, background context, or plot summary.\n"
-        "- NEVER start with 'In [year]...', 'The story of...', 'Once upon a time...', "
-        "'Throughout history...', '[Character] is the main character of...'.\n"
-        "- NEVER use markdown headings or labels. Write naturally as if speaking to a friend.\n"
-    )
-
-    if example_hook:
-        prompt += f"- Example hook: '{example_hook}'\n"
-    else:
-        prompt += (
-            "- Good: 'Subaru đã chết chính xác 27 lần. Và lần đau đớn nhất không phải do kẻ thù.'\n"
-            "- Good: 'This city was abandoned overnight. 350,000 people just... left.'\n"
-        )
-
-    prompt += (
-        "- Bad: 'Subaru là nhân vật chính của bộ truyện Re:Zero, một chàng trai trẻ...'\n"
-        "- Bad: 'Hôm nay chúng ta cùng tìm hiểu về...'\n"
-        "- Bad: '### Chernobyl Disaster' or 'Heading: Five Facts'\n"
-        "\n"
-        "CONTENT STYLE — LORE, NOT RECAP:\n"
-        "- Do NOT summarize plot or introduce characters. The audience ALREADY knows them.\n"
-        "- Instead: analyze WHY, reveal HIDDEN details, present THEORIES and DARK SECRETS.\n"
-        "- Every sentence should make the viewer think 'I didn't know that!' not 'Yeah, I know.'\n"
-        "- Frame as insider knowledge: 'Điều mà 99 phần trăm fan không biết là...'\n"
-        "- Use escalating revelations: each fact should be MORE shocking than the last.\n"
-        "\n"
-        f"ENDING (CRITICAL for algorithm — boosts replay rate over 100 percent):\n"
-        f"- {ending_rule}\n"
-        "- NEVER end with a dead-end conclusion like '...một trong những nhân vật quan trọng.'\n"
-        "- NEVER end with '...changed the world forever', '...for generations to come', "
-        "'...a haunting reminder', '...never be the same'.\n"
-        "\n"
-        f"PACING RULES:\n"
-        f"- {pacing_rule}\n"
-        "\n"
-        "TEXT-TO-SPEECH FORMATTING (CRITICAL):\n"
-        "- This text will be read aloud by a TTS engine. Write ONLY natural spoken text.\n"
-        "- NEVER use markdown formatting: no ###, no **, no *, no `, no bullet points, no numbered lists.\n"
-        "- NEVER use labels like 'Heading 1:', 'Title:', 'Section:', 'Part 1:'.\n"
-        "- No emojis, no special characters, no URLs, no percentage signs (write 'phần trăm').\n"
-        "- Every word in the output must be something a human would naturally say out loud.\n"
-        "\n"
-        "IMAGE KEYWORDS:\n"
-        "- Output 'image_keywords': a list of 8-12 image search queries.\n"
-        "- Each keyword must work as a STANDALONE search on Google/DDG Images.\n"
-        "- ALWAYS include the character or franchise name: 'Hakari Kinji JJK' not 'gambling character'.\n"
-        "- Mix character shots with scene descriptions: 'Charles Bernard manga JJK' AND 'pachinko machine Japan'.\n"
-        "- NEVER use abstract unsearchable concepts: 'cursed energy swirling' is BAD, 'JJK cursed energy purple effect' is GOOD.\n"
-        "- Each keyword should be 3-6 words, searchable as-is on image search engines.\n"
-        f"{skill_injection}"
-        "\n"
-        f"{style_hint}\n"
+    # Language instruction
+    lang_block = (
         f"Requested language: {language}\n"
         f"CRITICAL: ALL block text MUST be written in {language}. "
         f"Even if the input facts are in English, you MUST translate and rewrite them in {language}. "
         f"The audience speaks {language}. Do NOT output English text when the requested language is not English.\n"
-        f"{constraint_block}"
-        "\n"
-        "Return strict JSON only with this shape (ONE single block with all narration):\n"
-        '{"language": "...", "blocks": [{"role": "narration", "text": "The entire continuous narration here...", '
-        '"image_keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]}]}\n'
-        "IMPORTANT: Output exactly 1 block. Put ALL the narration text in that one block.\n"
-        "Include 5-10 image_keywords covering the key visual moments across the whole narration.\n"
-        "\n"
-        f"INPUT FACTS:\n{json.dumps(facts_payload, ensure_ascii=False, indent=2)}"
     )
-    return prompt
+
+    user_msg = (
+        f"{lang_block}"
+        f"{constraint_block}"
+        f"\nINPUT FACTS:\n{json.dumps(facts_payload, ensure_ascii=False, indent=2)}"
+    )
+
+    # Append citation IDs when facts carry them
+    facts_with_ids = [f for f in facts if f.fact_id]
+    if facts_with_ids:
+        fact_list_with_ids = "\n".join(
+            f"{f.fact_id}: {f.fact_text[:150]}" for f in facts_with_ids
+        )
+        user_msg += (
+            "\n\nFACTS (cite by ID):\n"
+            f"{fact_list_with_ids}\n"
+        )
+
+    return user_msg
 
 
 def _validate_anti_repetition(script: dict[str, Any]) -> list[str]:

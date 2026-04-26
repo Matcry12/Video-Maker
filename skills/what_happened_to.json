@@ -2,18 +2,65 @@
   "skill_id": "what_happened_to",
   "name": "What Happened To...?",
   "description": "Nostalgia-driven update format exploring what happened to a person, place, trend, show, or phenomenon that people forgot about. Combines 'remember this?' recognition with 'you won't believe what happened next' curiosity. Extremely high engagement from millennial and Gen-Z audiences.",
-  "trigger_keywords": ["what happened to", "where are they now", "whatever happened", "remember when", "what became of", "where is", "update on", "fall of", "rise and fall", "downfall", "disappeared", "forgotten", "used to be"],
-  "content_types": ["what_happened_to", "lore", "dark_secrets"],
-  "moods": ["emotional", "shocking", "dark_mystery"],
+  "trigger_keywords": [
+    "what happened to",
+    "where are they now",
+    "whatever happened",
+    "remember when",
+    "what became of",
+    "where is",
+    "update on",
+    "fall of",
+    "rise and fall",
+    "downfall",
+    "disappeared",
+    "forgotten",
+    "used to be"
+  ],
+  "content_types": [
+    "what_happened_to",
+    "lore",
+    "dark_secrets"
+  ],
+  "moods": [
+    "emotional",
+    "shocking",
+    "dark_mystery"
+  ],
   "structure": {
     "hook_rule": "Open with peak nostalgia recognition, then immediately signal something went WRONG: 'Remember [topic]? At their peak, they were [impressive stat/status]. Then they completely vanished. And what actually happened is way darker than you think.' The viewer must think 'oh yeah, I DO remember them — wait, WHAT happened?'",
     "pacing_rule": "Structure: PEAK (remind viewer how big/important subject was) → CRACKS (first signs of trouble) → FALL (what actually went wrong) → AFTERMATH (where they are now). Each phase gets progressively more surprising. Use timestamps or milestone markers: 'By 2019...', 'But then in March...', 'And as of today...' Give the fall enough detail to feel real, not just summarized.",
     "ending_rule": "End with either a redemption hint ('But recently, something unexpected happened...') or a haunting closer ('And to this day, nobody knows the full story.'). Loop back: 'And that's the real reason [topic] disappeared. Remember when [callback to peak]? That was the last time everything was okay.'",
     "tone": "Investigative journalist who grew up loving this topic. Mix of nostalgia warmth and 'here's what really happened' revelation. Never mocking or dismissive — respectful of the subject's peak, honest about the fall.",
-    "transitions_en": ["But behind the scenes...", "And that's when things started falling apart...", "But the real reason was...", "And here's where nobody was paying attention..."],
-    "transitions_vi": ["Nhưng đằng sau hậu trường...", "Và đó là khi mọi thứ bắt đầu sụp đổ...", "Nhưng lý do thực sự là...", "Và đây là lúc không ai để ý..."]
+    "transitions_en": [
+      "But behind the scenes...",
+      "And that's when things started falling apart...",
+      "But the real reason was...",
+      "And here's where nobody was paying attention..."
+    ],
+    "transitions_vi": [
+      "Nhưng đằng sau hậu trường...",
+      "Và đó là khi mọi thứ bắt đầu sụp đổ...",
+      "Nhưng lý do thực sự là...",
+      "Và đây là lúc không ai để ý..."
+    ]
   },
   "prompt_injection": "FORMAT: 'What happened to...?' nostalgia investigation. Structure: NOSTALGIA HOOK (peak recognition + vanishing signal) → THE PEAK (remind how big they were, use specific stats/moments) → THE CRACKS (2 early warning signs) → THE FALL (what actually went wrong — be specific, not vague) → RIGHT NOW (current status, surprising or poignant). The viewer should experience a journey from 'oh I remember them!' to 'wait, THAT happened?!' to 'wow, I had no idea.' Use time markers to ground the timeline. Never be mean-spirited — this format works because viewers CARED about the subject. Minimum 200 words.",
+  "extraction_hint": "A fact MATCHES if it reveals: the current or post-story status of the subject, what changed after the main arc ended, specific outcomes or consequences that followed, or where the subject is now. A fact DOES NOT MATCH if it describes: events during the main story arc, background history before the story began, or general character traits with no temporal update. When in doubt: ask 'does this fact answer what happened AFTER the story most people know?' If yes, keep it.",
   "example_hook_en": "Remember [topic]? They were literally everywhere. Then one day, they just... vanished. And what actually happened? Way worse than you think.",
-  "example_hook_vi": "Bạn còn nhớ [topic] không? Họ có mặt ở khắp nơi. Rồi một ngày, họ biến mất. Và chuyện gì đã xảy ra? Tệ hơn nhiều so với bạn nghĩ."
+  "example_hook_vi": "Bạn còn nhớ [topic] không? Họ có mặt ở khắp nơi. Rồi một ngày, họ biến mất. Và chuyện gì đã xảy ra? Tệ hơn nhiều so với bạn nghĩ.",
+  "quality_gate_questions": [
+    "HOOK: Does the hook establish who or what this is and immediately signal that their fate is unknown or surprising?",
+    "ARC: Does the script cover both the peak and the decline — not just the fall without context of how high they were?",
+    "TURNING POINT: Is there a specific identifiable moment that marks the turning point from peak to decline?",
+    "CURRENT STATE: Does the ending reveal the current state with at least one surprising or specific detail?",
+    "CAUSALITY: Does the narrative explain WHY the decline happened — not just describe that it happened?"
+  ],
+  "coverage_dimensions": [
+    "who or what this was and why people loved it",
+    "the peak or golden era",
+    "what went wrong or changed",
+    "current status (where they are now)",
+    "fan reception today and lasting cultural impact"
+  ]
 }

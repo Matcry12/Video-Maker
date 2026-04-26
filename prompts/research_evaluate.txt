@@ -1,0 +1,16 @@
+Topic: {topic}
+User goal: {user_prompt}
+Facts collected: {fact_count} / {target}
+
+Required angles (from user prompt): {must_cover}
+Angles already covered by extracted facts: {covered_angles}
+
+Which REQUIRED ANGLES are still missing from the extracted facts?
+
+Rules:
+- Emit a "missing_angles" array that is a SUBSET of the Required angles only.
+- Do not invent new angles not in Required angles.
+- If all required angles are covered OR required angles is empty, emit missing_angles=[].
+- Also assess whether the fact count is sufficient for a complete video.
+
+Return JSON: {{"sufficient": true/false, "missing_angles": ["angle1", "angle2"]}}

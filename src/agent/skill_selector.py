@@ -81,8 +81,16 @@ def get_default_skill() -> dict[str, Any]:
     }
 
 
-def select_skill(plan: AgentPlan, prompt: str = "") -> dict[str, Any]:
+def select_skill(
+    plan: AgentPlan,
+    prompt: str = "",
+    forced_skill_id: str | None = None,
+) -> dict[str, Any]:
     """Select the best matching skill for the given plan and prompt.
+
+    When `forced_skill_id` is set and matches a loaded skill, that skill is
+    returned directly (user override from the UI). An invalid forced id logs
+    a warning and falls through to BM25 selection.
 
     Matching strategy:
     1. BM25 score from query against skill description + trigger_keywords
@@ -95,6 +103,15 @@ def select_skill(plan: AgentPlan, prompt: str = "") -> dict[str, Any]:
     skills = load_skills()
     if not skills:
         return get_default_skill()
+
+    if forced_skill_id:
+        forced = next((s for s in skills if s.get("skill_id") == forced_skill_id), None)
+        if forced:
+            logger.info("Forced skill '%s' by user override", forced_skill_id)
+            return forced
+        logger.warning(
+            "Forced skill_id '%s' not found — falling back to auto-select", forced_skill_id,
+        )
 
     # Filter out _default from candidates (it's the fallback)
     candidates = [s for s in skills if s["skill_id"] != "_default"]

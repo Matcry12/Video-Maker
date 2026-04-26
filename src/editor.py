@@ -42,7 +42,13 @@ TOKEN_VARIANT_TABLE = str.maketrans(
         "…": "...",
     }
 )
-MIN_EVENT_DURATION_SEC = 0.35
+from .agent_config import load_agent_settings as _load_agent_settings
+_editor_cfg = _load_agent_settings().get("editor", {})
+
+MIN_EVENT_DURATION_SEC = float(_editor_cfg.get("min_event_duration_sec", 0.35))
+_MAX_OVERLAYS = int(_editor_cfg.get("max_overlays", 12))
+_FADE_DURATION_SEC = float(_editor_cfg.get("fade_duration_sec", 0.15))
+_SCALE_FACTOR = float(_editor_cfg.get("scale_factor", 1.15))
 
 # Pan direction presets for background image mode
 # (start_x_frac, start_y_frac, end_x_frac, end_y_frac) of max pan distance
@@ -106,6 +112,10 @@ def generate_ass(
                 cap["end"] = audio_duration
             if cap["start"] >= audio_duration:
                 cap["start"] = max(0.0, audio_duration - 0.1)
+        # Extend last caption to fill audio — prevents blank video at the end
+        # (TTS tail margin leaves the last word ending slightly before audio_duration)
+        if captions[-1]["end"] < audio_duration:
+            captions[-1]["end"] = audio_duration
 
     for caption in captions:
         caption_events = _caption_to_events(
@@ -715,7 +725,7 @@ def render_block_clip(
             ovr_input = input_idx
             input_idx += 1
 
-            fade_dur = 0.15
+            fade_dur = _FADE_DURATION_SEC
             fade_in_start = start_sec + 0.05
             fade_out_start = max(end_sec - 0.25, fade_in_start + fade_dur)
             overlay_end = fade_out_start + fade_dur
@@ -790,12 +800,14 @@ def render_block_clip_fast(
     from PIL import Image as PILImage
 
     # Only use fast path for background mode with overlays
+    # No _MAX_OVERLAYS cap here: PIL pre-composition iterates frames, it has no
+    # N-layer filter-chain memory pressure that the slow path has.
     valid_overlays = []
     if overlay_images:
         valid_overlays = [
             ovr for ovr in overlay_images
             if ovr.get("path") and Path(ovr["path"]).exists()
-        ][:_MAX_OVERLAYS]
+        ]
     elif overlay_image and overlay_image.exists():
         valid_overlays = [{"path": overlay_image, "start_sec": 0.05, "end_sec": 99999.0}]
 
@@ -819,7 +831,7 @@ def render_block_clip_fast(
 
     # --- Pre-load all overlay images as PIL ---
     # Scale to 1.15x output for Ken Burns pan headroom
-    scale_factor = 1.15
+    scale_factor = _SCALE_FACTOR
     scaled_w = int(width * scale_factor)
     scaled_h = int(height * scale_factor)
 
@@ -1167,7 +1179,7 @@ def build_merged_background(
     return output_path
 
 
-_MAX_OVERLAYS = 12  # Cap to limit FFmpeg memory usage
+# _MAX_OVERLAYS is now set from profile config at module top
 
 
 def _premix_pop_sounds(
@@ -1492,3 +1504,392 @@ def extract_audio_mp3(video_path: Path, output_path: Path) -> Path:
     _run_ffmpeg(cmd, "extract_audio_mp3")
     logger.info("MP3 done: %s", output_path)
     return output_path
+
+
+# ── Lab editor ──────────────────────────────────────────────────────────────
+
+import random as _lab_random
+from PIL import Image as _LabImage, ImageDraw as _LabImageDraw, ImageFilter as _LabImageFilter
+
+_LAB_FONT_DIR   = Path(__file__).parent.parent / "assets" / "fonts"
+_LAB_VIDEO_W    = 1080
+_LAB_VIDEO_H    = 1920
+_LAB_SIDE_MARGIN = 60
+_LAB_VERT_MARGIN = 120
+_LAB_CARD_W     = _LAB_VIDEO_W - _LAB_SIDE_MARGIN * 2   # 960
+_LAB_CARD_H     = _LAB_VIDEO_H - _LAB_VERT_MARGIN * 2   # 1680
+_LAB_PANEL_MARGIN = 84
+_LAB_PANEL_W    = _LAB_VIDEO_W - _LAB_PANEL_MARGIN * 2  # 912
+_LAB_PANEL_H    = int(_LAB_PANEL_W * 9 / 16)            # 513
+_LAB_PANEL_TOP_Y    = 80
+_LAB_PANEL_BOTTOM_Y = _LAB_VIDEO_H - _LAB_PANEL_TOP_Y - _LAB_PANEL_H  # 1327
+
+_LAB_ASS_HEADER = """\
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Changa One,88,&H00FFFFFF,&H0054D8FF,&H000A0A0A,&H00000000,1,0,0,0,100,100,0.0,0,1,6.0,1.0,5,80,80,0,1
+Style: Highlight,Changa One,88,&H0000F6FF,&H0000F6FF,&H00101010,&H00000000,1,0,0,0,100,100,0.0,0,1,7.0,1.0,5,80,80,0,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"""
+
+_LAB_XFADE = {
+    "left":  "slideleft",
+    "right": "slideright",
+    "up":    "slideup",
+    "down":  "slidedown",
+}
+
+_LAB_ASS_TAG_RE = re.compile(r"\{[^}]*\}")
+_LAB_PUNCT_NO_SPACE_BEFORE = frozenset(",.!?;:%)]}\"'")
+_LAB_PUNCT_NO_SPACE_AFTER  = frozenset("([{")
+
+
+def _lab_ease(t: float) -> float:
+    if t < 0.5:
+        return 4 * t * t * t
+    p = 2 * t - 2
+    return 0.5 * p * p * p + 1
+
+
+def _lab_cover_resize(img, w: int, h: int, bias_x: float = 0.5):
+    src_w, src_h = img.size
+    scale = max(w / src_w, h / src_h)
+    resized = img.resize((int(src_w * scale), int(src_h * scale)), _LabImage.LANCZOS)
+    max_left = max(resized.width - w, 0)
+    left = int(max_left * bias_x)
+    top  = max((resized.height - h) // 2, 0)
+    return resized.crop((left, top, left + w, top + h))
+
+
+def _lab_paste_panel(overlay, card, x: int, y: int) -> None:
+    sw, sh = card.width + 40, card.height + 40
+    shadow = _LabImage.new("RGBA", (sw, sh), (0, 0, 0, 0))
+    _LabImageDraw.Draw(shadow).rounded_rectangle((0, 0, sw, sh), radius=44, fill=(0, 0, 0, 130))
+    shadow = shadow.filter(_LabImageFilter.GaussianBlur(20))
+    overlay.alpha_composite(shadow, (x - 20, y - 14))
+    fw, fh = card.width + 16, card.height + 16
+    frame = _LabImage.new("RGBA", (fw, fh), (248, 248, 248, 255))
+    _LabImageDraw.Draw(frame).rounded_rectangle((0, 0, fw, fh), radius=32, fill=(248, 248, 248, 255))
+    overlay.alpha_composite(frame, (x - 8, y - 8))
+    overlay.alpha_composite(card.convert("RGBA"), (x, y))
+
+
+def _lab_build_portrait_slide(img_path: Path, bias_x: float = 0.5):
+    """Portrait-style card on a blurred background. Returns a PIL RGB Image."""
+    with _LabImage.open(img_path).convert("RGB") as src:
+        bg   = _lab_cover_resize(src, _LAB_VIDEO_W, _LAB_VIDEO_H, bias_x=0.5).filter(_LabImageFilter.GaussianBlur(26))
+        card = _lab_cover_resize(src, _LAB_CARD_W, _LAB_CARD_H, bias_x=bias_x)
+        base    = bg.convert("RGBA")
+        overlay = _LabImage.new("RGBA", (_LAB_VIDEO_W, _LAB_VIDEO_H), (0, 0, 0, 0))
+        _lab_paste_panel(overlay, card, _LAB_SIDE_MARGIN, _LAB_VERT_MARGIN)
+        static  = _LabImage.alpha_composite(base, overlay).convert("RGB")
+    return static
+
+
+def _lab_build_dual_panel_slide(img_top_path: Path, img_bottom_path: Path, bias_top: float = 0.35, bias_bottom: float = 0.65):
+    """Two landscape panels (top/bottom) with blurred background. Returns a PIL RGB Image."""
+    with _LabImage.open(img_top_path).convert("RGB") as src_top:
+        bg = _lab_cover_resize(src_top, _LAB_VIDEO_W, _LAB_VIDEO_H, bias_x=0.5).filter(_LabImageFilter.GaussianBlur(26))
+        panel_top = _lab_cover_resize(src_top, _LAB_PANEL_W, _LAB_PANEL_H, bias_x=bias_top)
+    with _LabImage.open(img_bottom_path).convert("RGB") as src_bot:
+        panel_bot = _lab_cover_resize(src_bot, _LAB_PANEL_W, _LAB_PANEL_H, bias_x=bias_bottom)
+
+    base    = bg.convert("RGBA")
+    overlay = _LabImage.new("RGBA", (_LAB_VIDEO_W, _LAB_VIDEO_H), (0, 0, 0, 0))
+    _lab_paste_panel(overlay, panel_top, _LAB_PANEL_MARGIN, _LAB_PANEL_TOP_Y)
+    _lab_paste_panel(overlay, panel_bot, _LAB_PANEL_MARGIN, _LAB_PANEL_BOTTOM_Y)
+    return _LabImage.alpha_composite(base, overlay).convert("RGB")
+
+
+def _lab_merge_punctuation(words: list[dict]) -> list[dict]:
+    """Collapse standalone punctuation tokens into the preceding word."""
+    result: list[dict] = []
+    punct_only = set(".,!?;:")
+    for w in words:
+        token = str(w.get("word", "")).strip()
+        if token in punct_only and result:
+            prev = dict(result[-1])
+            prev["word"] = str(prev.get("word", "")).rstrip() + token
+            prev["end"] = w["end"]
+            result[-1] = prev
+        else:
+            result.append(w)
+    return result
+
+
+def _lab_chunk_words(words: list[dict], max_words: int = 6) -> list[list[dict]]:
+    chunks: list[list[dict]] = []
+    current: list[dict] = []
+    for word in words:
+        current.append(word)
+        token = str(word.get("word", "")).strip()
+        if token.endswith((".", "!", "?")) or (token.endswith(",") and len(current) >= 3) or len(current) >= max_words:
+            chunks.append(current)
+            current = []
+    if current:
+        chunks.append(current)
+
+    merged: list[list[dict]] = []
+    for chunk in chunks:
+        if len(chunk) == 1 and merged:
+            merged[-1].extend(chunk)
+        else:
+            merged.append(chunk)
+
+    if len(merged) > 1 and len(merged[0]) == 1:
+        merged[1] = merged[0] + merged[1]
+        merged = merged[1:]
+
+    return merged
+
+
+def _lab_join_ass_tokens(tokens: list[str]) -> str:
+    """Join tokens with ASS-tag-aware punctuation spacing."""
+    if not tokens:
+        return ""
+    result = [tokens[0]]
+    for token in tokens[1:]:
+        prev_clean = _LAB_ASS_TAG_RE.sub("", result[-1])
+        next_clean = _LAB_ASS_TAG_RE.sub("", token)
+        prev_last  = prev_clean[-1]  if prev_clean  else ""
+        next_first = next_clean[0]   if next_clean  else ""
+        if next_first in _LAB_PUNCT_NO_SPACE_BEFORE or prev_last in _LAB_PUNCT_NO_SPACE_AFTER:
+            result.append(token)
+        else:
+            result.append(" " + token)
+    return "".join(result)
+
+
+def _lab_split_into_blocks(words: list[dict], target: int = 30) -> list[list[dict]]:
+    """Split word list into blocks of ~target words, preferring sentence ends."""
+    blocks: list[list[dict]] = []
+    i = 0
+    while i < len(words):
+        end = min(i + target, len(words))
+        best = end
+        for j in range(end, max(i + target // 2, i + 1), -1):
+            if str(words[j - 1].get("word", "")).strip().endswith((".", "!", "?")):
+                best = j
+                break
+        blocks.append(words[i:best])
+        i = best
+    if len(blocks) > 1 and len(blocks[-1]) < 8:
+        blocks[-2].extend(blocks[-1])
+        blocks.pop()
+    return blocks
+
+
+def _lab_token_line_groups(chunk: list[dict]) -> list[list[str]]:
+    plain   = _join_tokens([str(w["word"]) for w in chunk])
+    wrapped = _wrap_caption_lines(plain, max_chars_per_line=18, max_lines=2)
+    tokens  = [str(w["word"]) for w in chunk]
+    if len(wrapped) <= 1 or len(tokens) <= 1:
+        return [tokens]
+    best: list[list[str]] | None = None
+    best_score: tuple[float, float] | None = None
+    for i in range(1, len(tokens)):
+        left, right = tokens[:i], tokens[i:]
+        score = (
+            abs(len(_join_tokens(left)) - len(wrapped[0])) + abs(len(_join_tokens(right)) - len(wrapped[1])),
+            abs(len(_join_tokens(left)) - len(_join_tokens(right))),
+        )
+        if best_score is None or score < best_score:
+            best_score = score
+            best = [left, right]
+    return best or [tokens]
+
+
+def _lab_highlight_text(line_groups: list[list[str]], active_idx: int) -> str:
+    token_idx = 0
+    lines: list[str] = []
+    for group in line_groups:
+        rendered: list[str] = []
+        for token in group:
+            if token_idx == active_idx:
+                rendered.append(r"{\rHighlight}" + token + r"{\rDefault}")
+            else:
+                rendered.append(token)
+            token_idx += 1
+        lines.append(_lab_join_ass_tokens(rendered))
+    return r"\N".join(lines)
+
+
+def _lab_seconds_to_ass(s: float) -> str:
+    total_cs = max(int(round(s * 100)), 0)
+    cs = total_cs % 100
+    total_s = total_cs // 100
+    sec = total_s % 60
+    m   = (total_s // 60) % 60
+    h   = total_s // 3600
+    return f"{h}:{m:02d}:{sec:02d}.{cs:02d}"
+
+
+def _lab_build_karaoke_ass(words: list[dict], audio_start: float) -> str:
+    """Build a complete ASS file string (header + events). Timestamps are (word.start - audio_start)."""
+    shifted = []
+    for w in words:
+        shifted.append({
+            **w,
+            "start": float(w["start"]) - audio_start,
+            "end":   float(w["end"])   - audio_start,
+        })
+
+    raw: list[tuple[float, float, str]] = []
+    chunks = _lab_chunk_words(_lab_merge_punctuation(shifted))
+    for ci, chunk in enumerate(chunks):
+        if not chunk:
+            continue
+        line_groups = _lab_token_line_groups(chunk)
+        chunk_end = float(chunk[-1]["end"]) + 0.12
+        if ci < len(chunks) - 1 and chunks[ci + 1]:
+            nxt = float(chunks[ci + 1][0]["start"])
+            chunk_end = min(chunk_end, nxt - 0.02)
+        prev_end = float(chunk[0]["start"])
+        for idx, word in enumerate(chunk):
+            start = max(float(word["start"]), prev_end)
+            if idx < len(chunk) - 1:
+                end = max(float(chunk[idx + 1]["start"]), start + 0.04)
+            else:
+                end = max(chunk_end, start + 0.04)
+            raw.append((start, end, _lab_highlight_text(line_groups, idx)))
+            prev_end = end
+
+    events: list[str] = []
+    for i, (s, e, text) in enumerate(raw):
+        if i < len(raw) - 1:
+            e = min(e, raw[i + 1][0] - 0.001)
+        if e < s + 0.001:
+            continue
+        events.append(f"Dialogue: 0,{_lab_seconds_to_ass(s)},{_lab_seconds_to_ass(e)},Default,,0,0,0,,{text}")
+
+    return _LAB_ASS_HEADER + "\n" + "\n".join(events) + "\n"
+
+
+def _lab_render_clip_video_only(slide: Path, duration: float, out: Path) -> None:
+    """Render a static image loop as a video-only clip (no audio, no subtitles)."""
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-loop", "1", "-i", str(slide),
+            "-t", f"{duration:.3f}",
+            "-vf", "fps=30,format=yuv420p",
+            "-an",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            str(out),
+        ],
+        check=True, capture_output=True,
+    )
+
+
+def _lab_escape_path(path: Path) -> str:
+    return str(path).replace("\\", "/").replace(":", "\\:")
+
+
+def _lab_apply_xfade(
+    clip_paths: list[Path],
+    block_durs: list[float],
+    directions: list[str],
+    xfade_dur: float,
+    ass_path: Path,
+    audio_path: Path,
+    audio_start: float,
+    out: Path,
+) -> None:
+    """Apply xfade transitions, burn global ASS, attach audio — one FFmpeg pass."""
+    n = len(clip_paths)
+    sub  = _lab_escape_path(ass_path)
+    fdir = _lab_escape_path(_LAB_FONT_DIR)
+
+    if n == 1:
+        subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-i", str(clip_paths[0]),
+                "-ss", f"{audio_start:.3f}", "-i", str(audio_path),
+                "-vf", f"fps=30,format=yuv420p,ass='{sub}':fontsdir='{fdir}'",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                "-c:a", "aac", "-b:a", "192k", "-shortest",
+                str(out),
+            ],
+            check=True,
+        )
+        return
+
+    # cut_times = cumulative end of each clip (before xfade reduction)
+    cut_times: list[float] = []
+    t = 0.0
+    for d in block_durs[:-1]:
+        t += d
+        cut_times.append(t)
+
+    filter_lines: list[str] = []
+    prev_label = "[0:v]"
+    accumulated_reduction = 0.0
+
+    for i in range(n - 1):
+        direction  = directions[i % len(directions)]
+        xfade_name = _LAB_XFADE.get(direction, "fade")
+        offset = cut_times[i] - xfade_dur / 2 - accumulated_reduction
+        offset = max(offset, 0.01)
+        accumulated_reduction += xfade_dur
+        next_input = f"[{i + 1}:v]"
+        mid_label  = f"[xf{i + 1}]"
+        filter_lines.append(
+            f"{prev_label}{next_input}xfade=transition={xfade_name}"
+            f":duration={xfade_dur:.3f}:offset={offset:.3f}{mid_label}"
+        )
+        prev_label = mid_label
+
+    filter_lines.append(
+        f"{prev_label}fps=30,format=yuv420p,ass='{sub}':fontsdir='{fdir}'[vout]"
+    )
+
+    filter_complex = ";".join(filter_lines)
+    audio_idx = n
+
+    cmd = ["ffmpeg", "-y"]
+    for p in clip_paths:
+        cmd += ["-i", str(p)]
+    cmd += ["-ss", f"{audio_start:.3f}", "-i", str(audio_path)]
+    cmd += [
+        "-filter_complex", filter_complex,
+        "-map", "[vout]",
+        "-map", f"{audio_idx}:a",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k",
+        "-shortest",
+        str(out),
+    ]
+    subprocess.run(cmd, check=True)
+
+
+def _lab_pick_bgm(bgm_dir: Path) -> Optional[Path]:
+    """Randomly pick a .mp3 or .wav from the folder. Returns None if none found."""
+    if not bgm_dir.exists():
+        return None
+    candidates = [p for p in bgm_dir.iterdir() if p.suffix.lower() in (".mp3", ".wav")]
+    if not candidates:
+        return None
+    return _lab_random.choice(candidates)
+
+
+def _lab_mix_bgm(video: Path, bgm: Path, out: Path, bgm_vol: float = 0.15) -> None:
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-i", str(video), "-i", str(bgm),
+            "-filter_complex",
+            f"[0:a][1:a]amix=inputs=2:duration=first:weights=1 {bgm_vol}[aout]",
+            "-map", "0:v", "-map", "[aout]",
+            "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+            str(out),
+        ],
+        check=True,
+    )

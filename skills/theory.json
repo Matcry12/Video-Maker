@@ -2,18 +2,66 @@
   "skill_id": "theory",
   "name": "Theory & Analysis",
   "description": "Fan theory and analysis format presenting evidence for controversial or mind-bending theories. Builds a detective-like case connecting clues, then invites viewers to pick a side. Works for anime theories, movie theories, game theories, historical what-ifs.",
-  "trigger_keywords": ["theory", "fan theory", "analysis", "what if", "debate", "controversial", "conspiracy theory", "evidence", "proof", "explained", "could it be", "actually means", "real meaning", "hidden meaning", "plot twist", "predict", "foreshadowing theory"],
-  "content_types": ["theory"],
-  "moods": ["dark_mystery", "epic"],
+  "trigger_keywords": [
+    "theory",
+    "fan theory",
+    "analysis",
+    "what if",
+    "debate",
+    "controversial",
+    "conspiracy theory",
+    "evidence",
+    "proof",
+    "explained",
+    "could it be",
+    "actually means",
+    "real meaning",
+    "hidden meaning",
+    "plot twist",
+    "predict",
+    "foreshadowing theory"
+  ],
+  "content_types": [
+    "theory"
+  ],
+  "moods": [
+    "dark_mystery",
+    "epic"
+  ],
   "structure": {
     "hook_rule": "Open with the theory's MOST CONTROVERSIAL claim stated as a confident hypothesis: 'What if [character] was actually [theory] all along? And the evidence has been right in front of us the whole time.' Make the viewer immediately want to prove you wrong — or right.",
     "pacing_rule": "Build the case like a prosecutor. Present evidence piece by piece: 'First...', 'And here's what confirms it...', 'But the real proof is...'. After 2-3 pieces of evidence, introduce ONE strong counter-argument, then systematically demolish it. This makes the theory feel bulletproof. Short evidence statements, then connect them.",
     "ending_rule": "End with an open verdict that forces engagement: 'The evidence is all there. The only question is... do you believe it?' or 'And if this is true, then [mind-blowing implication].' Loop back to the opening claim with added weight.",
     "tone": "Investigative journalist who just cracked a case — confident, methodical, but genuinely excited by what they found. Not tinfoil-hat conspiracy, but compelling argument. Think detective closing statement.",
-    "transitions_en": ["And here's the evidence...", "But wait, someone might argue...", "However, this explains everything...", "And if that's true, then..."],
-    "transitions_vi": ["Và đây là bằng chứng...", "Nhưng chờ đã, có người phản bác...", "Tuy nhiên, điều này giải thích tất cả...", "Và nếu đúng vậy thì..."]
+    "transitions_en": [
+      "And here's the evidence...",
+      "But wait, someone might argue...",
+      "However, this explains everything...",
+      "And if that's true, then..."
+    ],
+    "transitions_vi": [
+      "Và đây là bằng chứng...",
+      "Nhưng chờ đã, có người phản bác...",
+      "Tuy nhiên, điều này giải thích tất cả...",
+      "Và nếu đúng vậy thì..."
+    ]
   },
   "prompt_injection": "FORMAT: Theory analysis with evidence chain. Structure: BOLD CLAIM HOOK → Evidence #1 (most accessible) → Evidence #2 (surprising connection) → Evidence #3 (the clincher) → Counter-argument + rebuttal → Verdict + implication. Present the theory as plausible and well-reasoned, never as crazy speculation. Use connecting logic: 'This explains why...', 'And if we look at this scene again...', 'Now here's what everyone missed...'. The viewer should leave thinking 'wait, that actually makes sense.' Frame as intellectual discovery, not conspiracy rant. Minimum 200 words.",
+  "extraction_hint": "A fact MATCHES if it reveals: an unexplained plot hole, hidden symbolism, foreshadowing that was later confirmed, inconsistencies between scenes, or creator statements that hint at deeper meaning. A fact DOES NOT MATCH if it is: straightforward canon information with no interpretive angle, or a plot summary of confirmed events. When in doubt: ask 'could this fact be used as evidence for or against a fan theory?' If no, reject it.",
   "example_hook_en": "What if [theory]? Before you dismiss it, look at what everyone missed.",
-  "example_hook_vi": "Nếu [theory] thì sao? Trước khi bạn phản bác, hãy nhìn vào điều mà ai cũng bỏ qua."
+  "example_hook_vi": "Nếu [theory] thì sao? Trước khi bạn phản bác, hãy nhìn vào điều mà ai cũng bỏ qua.",
+  "quality_gate_questions": [
+    "HOOK: Does the hook state the theory as a bold confident claim rather than a timid question?",
+    "CHAIN: Is the evidence chain laid out clearly — each piece building on the last toward a logical conclusion?",
+    "OVERLOOKED: Is there at least one piece of evidence that most viewers genuinely wouldn't have noticed on their own?",
+    "CONSISTENCY: Does the theory have internal consistency — no contradictions or holes left unaddressed?",
+    "VERDICT: Does the ending either confirm, challenge, or deliberately leave the theory open — rather than just trailing off?"
+  ],
+  "coverage_dimensions": [
+    "the theory statement (clear, specific claim)",
+    "evidence point 1 supporting the theory",
+    "evidence point 2 (stronger or more surprising)",
+    "counter-evidence and why it does not hold",
+    "what the theory reveals or implies if true"
+  ]
 }

@@ -2,18 +2,66 @@
   "skill_id": "top_list",
   "name": "Top List",
   "description": "Ranked countdown list format — top 5, top 10, ranking best to worst. Numbered items with dramatic build-up, each entry more impactful than the last, climaxing with a mic-drop number one reveal.",
-  "trigger_keywords": ["top 5", "top 10", "top 3", "top 7", "ranking", "best", "worst", "countdown", "list", "ranked", "number one", "top list", "strongest", "most powerful", "greatest", "most dangerous", "weakest"],
-  "content_types": ["comparison"],
-  "moods": ["epic", "shocking"],
+  "trigger_keywords": [
+    "top 5",
+    "top 10",
+    "top 3",
+    "top 7",
+    "ranking",
+    "best",
+    "worst",
+    "countdown",
+    "list",
+    "ranked",
+    "number one",
+    "top list",
+    "strongest",
+    "most powerful",
+    "greatest",
+    "most dangerous",
+    "weakest"
+  ],
+  "content_types": [
+    "comparison"
+  ],
+  "moods": [
+    "epic",
+    "shocking"
+  ],
   "structure": {
     "hook_rule": "Tease number one IMMEDIATELY — but don't reveal it: 'Number one on this list changes EVERYTHING about how you see [topic]. But let's start from the bottom.' Create an itch the viewer MUST scratch by watching the whole video. Never reveal the top pick in the hook.",
     "pacing_rule": "Count down from the last number to number one. Each entry gets ONE killer detail (not a paragraph) — the fact that makes it unique. Quick entries at the bottom (1-2 sentences each), progressively more detail as you approach number one. Spend 3x more words on #1 than any other entry. Use dramatic transitions between entries.",
     "ending_rule": "After the #1 reveal, add an unexpected twist: 'But there's actually a secret pick that nobody talks about...' or 'And that's why number one connects back to everything else on this list.' Loop back to the hook's tease.",
     "tone": "Energetic countdown host building to a crescendo. Start confident, end EXPLOSIVE. Each number should feel more important than the last. Think sports commentator meets hype man.",
-    "transitions_en": ["Next up...", "But that's not number one...", "And at the next spot...", "But wait, number one is where it gets INSANE..."],
-    "transitions_vi": ["Tiếp theo...", "Nhưng đó chưa phải số một...", "Và ở vị trí tiếp theo...", "Nhưng chờ đã, số một mới thực sự điên rồ..."]
+    "transitions_en": [
+      "Next up...",
+      "But that's not number one...",
+      "And at the next spot...",
+      "But wait, number one is where it gets INSANE..."
+    ],
+    "transitions_vi": [
+      "Tiếp theo...",
+      "Nhưng đó chưa phải số một...",
+      "Và ở vị trí tiếp theo...",
+      "Nhưng chờ đã, số một mới thực sự điên rồ..."
+    ]
   },
   "prompt_injection": "FORMAT: Numbered countdown list. CRITICAL STRUCTURE: Hook tease of #1 → Count from bottom → Quick entries with ONE killer detail each → Extended #1 reveal → Twist closer. Each entry needs ONE memorable detail, not an essay. Build drama geometrically — not linearly. The #1 reveal should feel like a mic drop moment. Use natural counting language, NOT robotic 'Number 5 is...' — instead: 'Coming in at five...', 'At number three, and this one surprised me...'. Make transitions feel like mini-cliffhangers. Minimum 200 words.",
+  "extraction_hint": "A fact MATCHES if it contains: specific numbers, measurable records, superlatives (strongest, fastest, most), or rankable qualities with concrete evidence. A fact DOES NOT MATCH if it is: a vague qualitative claim without data, a plot event, or a general description with no metric. When in doubt: ask 'can this fact anchor a numbered list item with a specific claim?' If no, reject it.",
   "example_hook_en": "Number one on this list made me completely rethink [topic]. Seriously. Let's start from the bottom and work our way up.",
-  "example_hook_vi": "Số một trong danh sách này đã khiến tôi phải suy nghĩ lại hoàn toàn về [topic]. Nghiêm túc luôn. Hãy bắt đầu từ cuối."
+  "example_hook_vi": "Số một trong danh sách này đã khiến tôi phải suy nghĩ lại hoàn toàn về [topic]. Nghiêm túc luôn. Hãy bắt đầu từ cuối.",
+  "quality_gate_questions": [
+    "HOOK: Does the hook tease number one without revealing it — creating an itch the viewer must watch through to scratch?",
+    "CRITERIA: Does each entry have a specific stated reason for its position rather than arbitrary placement?",
+    "COUNTERINTUITIVE: Is there at least one placement that challenges the viewer's expectations?",
+    "PAYOFF: Does the number one entry feel like the inevitable earned winner based on the buildup — not a random choice?",
+    "SPECIFICITY: Is the list specific to this topic with concrete details — not generic superlatives that could apply anywhere?"
+  ],
+  "coverage_dimensions": [
+    "the subject being ranked and what criteria fans use to judge it",
+    "commonly cited but overrated entries and why they fall short",
+    "underrated or overlooked entries most people forget",
+    "the most debated and controversial ranking choice",
+    "fan and critic consensus on the top pick and what makes it stand out"
+  ]
 }

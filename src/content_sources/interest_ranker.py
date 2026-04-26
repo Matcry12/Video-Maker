@@ -13,11 +13,18 @@ import os
 import re
 import time
 from hashlib import sha256
+from pathlib import Path as _Path
 from typing import Any
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
 
 from pydantic import BaseModel, Field
+
+_PROMPT_DIR = _Path(__file__).parent.parent.parent / "prompts"
+
+
+def _load_prompt(name: str) -> str:
+    return (_PROMPT_DIR / name).read_text(encoding="utf-8")
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +83,9 @@ class RankResultItem(BaseModel):
 def rank_interest_candidates(
     candidates: list[RankCandidate | dict[str, Any]],
     *,
-    model: str,
     language: str,
+    model: str = "",
+    stage: str = "interest_rank",
     provider: str | None = None,
     batch_size: int | None = None,
     prompt_version: str = DEFAULT_PROMPT_VERSION,
@@ -85,7 +93,14 @@ def rank_interest_candidates(
     retry_on_parse_failure: bool = True,
     keep_threshold: float = DEFAULT_KEEP_THRESHOLD,
 ) -> dict[str, Any]:
-    """Rank compact candidates with a small LLM and local fallbacks."""
+    """Rank compact candidates with a small LLM and local fallbacks.
+
+    If `model` is empty, resolves the Groq model from `stage` via agent_config.
+    Ollama is auto-detected when `model` contains a ':'.
+    """
+    if not model:
+        from ..agent_config import resolve_stage
+        model = resolve_stage(stage).groq_model
     started_at = time.monotonic()
     normalized = _normalize_candidates(
         candidates,
@@ -121,6 +136,7 @@ def rank_interest_candidates(
                 client=model_client,
                 model=model,
                 prompt=prompt,
+                stage=stage,
             )
             batch_items, parse_notes = _parse_rank_response(
                 raw_response,
@@ -139,6 +155,7 @@ def rank_interest_candidates(
                         client=model_client or _get_model_client(provider=effective_provider),
                         model=model,
                         invalid_output=locals().get("raw_response", ""),
+                        stage=stage,
                     )
                     batch_items, repair_notes = _parse_rank_response(
                         repaired_response,
@@ -325,18 +342,16 @@ def _get_model_client(*, provider: str) -> Any:
     return None
 
 
-def _call_model(*, provider: str, client: Any, model: str, prompt: str) -> str:
+def _call_model(*, provider: str, client: Any, model: str, prompt: str, stage: str) -> str:
     if provider == "ollama":
         return _call_ollama_model(client=client, model=model, prompt=prompt)
 
     from ..llm_client import chat_completion
 
     return chat_completion(
-        system=(
-            "You rank compact short-video candidates and return strict JSON only. "
-            "Do not add commentary."
-        ),
+        system=_load_prompt("interest_rank.txt"),
         user=prompt,
+        stage=stage,
         model=model,
         temperature=0.2,
         timeout=25.0,
@@ -357,10 +372,7 @@ def _call_ollama_model(*, client: dict[str, str], model: str, prompt: str) -> st
         "messages": [
             {
                 "role": "system",
-                "content": (
-                    "You rank compact short-video candidates and return strict JSON only. "
-                    "Do not add commentary."
-                ),
+                "content": _load_prompt("interest_rank.txt"),
             },
             {
                 "role": "user",
@@ -396,7 +408,7 @@ def _call_ollama_model(*, client: dict[str, str], model: str, prompt: str) -> st
     return content
 
 
-def _repair_rank_response(*, provider: str, client: Any, model: str, invalid_output: str) -> str:
+def _repair_rank_response(*, provider: str, client: Any, model: str, invalid_output: str, stage: str) -> str:
     prompt = (
         "Fix this into valid JSON only.\n"
         "Required shape:\n"
@@ -404,7 +416,7 @@ def _repair_rank_response(*, provider: str, client: Any, model: str, invalid_out
         "Invalid output:\n"
         f"{invalid_output}"
     )
-    return _call_model(provider=provider, client=client, model=model, prompt=prompt)
+    return _call_model(provider=provider, client=client, model=model, prompt=prompt, stage=stage)
 
 
 def _parse_rank_response(

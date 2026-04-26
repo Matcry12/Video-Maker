@@ -16,7 +16,6 @@ from .models import FactCard, ScoreBreakdown, TopicBundle
 logger = logging.getLogger(__name__)
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant"
 DEFAULT_FACT_PROMPT_VERSION = "facts_v1"
 
 MIN_FACTS_PER_TOPIC = 3
@@ -86,7 +85,8 @@ def _extract_with_groq(
     prompt_override: str | None,
     timeout_sec: float,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    model = (os.getenv("GROQ_MODEL", "").strip() or DEFAULT_GROQ_MODEL)
+    from ..agent_config import resolve_stage
+    model = os.getenv("GROQ_MODEL", "").strip() or resolve_stage("bank_extract").groq_model
     prompt, prompt_mode = _build_fact_prompt(
         topic_bundle,
         target=target,
