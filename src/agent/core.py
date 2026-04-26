@@ -161,6 +161,7 @@ class VideoAgent:
             "facts": facts,
             "sources_used": sources_used,
             "warnings": research_result.get("warnings", []),
+            "knowledge_doc": research_result.get("coverage", ""),
         })
 
         # === PHASE 3: SCRIPT ===
