@@ -225,8 +225,12 @@ def run_editor_lab(
     # --- Timings ---
     block_starts = [float(b[0]["start"]) for b in blocks]
     block_ends   = [float(b[-1]["end"])  for b in blocks]
-    block_durs   = [block_ends[i] - block_starts[i] for i in range(len(blocks))]
-    block_durs[-1] += 0.4  # tail on last block
+    # Include inter-block gaps so each clip covers silence between blocks.
+    # Also pad the last clip by (n-1)*xfade_dur to compensate for time lost
+    # to xfade overlaps — without this, -shortest cuts the audio early.
+    n_blocks = len(blocks)
+    block_durs = [block_starts[i + 1] - block_starts[i] for i in range(n_blocks - 1)]
+    block_durs.append(block_ends[-1] - block_starts[-1] + 0.4 + (n_blocks - 1) * xfade_dur)
     audio_start = block_starts[0]
 
     # --- Render video-only clips ---
