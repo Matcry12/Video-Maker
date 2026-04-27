@@ -9,28 +9,63 @@ _STOPWORD_PROPERS = frozenset({
     "Moreover", "Furthermore", "Meanwhile", "Otherwise", "Therefore",
     "Instead", "Thus", "Hence", "Whereas", "While", "After", "Before",
     "During", "Since", "Until", "When", "Where", "Which",
+    # Pronouns
+    "She", "He", "They", "Her", "Him", "We", "You",
+    # Question words
+    "Why", "What", "How", "Who", "Whose",
+    # Common adverbs / sentence starters that are not proper nouns
+    "Yet", "Now", "Still", "Soon", "Here", "There", "Today",
     # Common sentence starters that are not proper nouns
     "But", "And", "The", "This", "That", "These", "Those",
-    "His", "Her", "Its", "Our", "Their", "Your", "With",
+    "His", "Its", "Our", "Their", "Your", "With",
     "Not", "Even", "Just", "Also", "Then", "From", "Into",
 })
 
 _SENTENCE_SPLIT = re.compile(r'(?<=[.!?])\s+')
+_MULTI_PROPER = re.compile(r'\b[A-Z][a-z]{1,}\s+[A-Z][a-z]{1,}\b')
 _PROPER_NOUN = re.compile(r'\b[A-Z][a-z]{2,}\b')
 
 
-def _window_keywords(text: str, topic: str) -> list[str]:
-    """Extract proper-noun keywords from a window, filtered and topic-prefixed."""
-    propers = [w for w in _PROPER_NOUN.findall(text) if w not in _STOPWORD_PROPERS]
+def _window_keywords(text: str, topic: str, franchise: str = "") -> list[str]:
+    """Extract proper-noun keywords from a window, preferring multi-word entity names."""
     seen: set[str] = set()
     keywords: list[str] = []
-    for p in propers[:4]:
+
+    # Prefer two-word proper noun phrases (character names, franchise titles)
+    phrase_words: set[str] = set()
+    for phrase in _MULTI_PROPER.findall(text):
+        if len(keywords) >= 4:
+            break
+        if phrase not in seen:
+            seen.add(phrase)
+            keywords.append(phrase)
+            phrase_words.update(phrase.split())
+
+    # Fill remaining slots with topic-prefixed single proper nouns
+    # Skip words already used in a multi-word phrase or that are topic words
+    topic_words = set(topic.split())
+    singles = [
+        w for w in _PROPER_NOUN.findall(text)
+        if w not in _STOPWORD_PROPERS and w not in phrase_words and w not in topic_words
+    ]
+    for p in singles:
+        if len(keywords) >= 4:
+            break
         kw = f"{topic} {p}".strip()
         if kw not in seen:
             seen.add(kw)
             keywords.append(kw)
+
     if not keywords:
         keywords.append(topic)
+
+    # Append franchise tag to every keyword that doesn't already contain it
+    if franchise:
+        fl = franchise.lower()
+        keywords = [
+            kw if fl in kw.lower() else f"{kw} {franchise}"
+            for kw in keywords
+        ]
     return keywords
 
 
@@ -61,6 +96,7 @@ def split_into_windows(
     block_text: str,
     topic: str,
     max_words_per_window: int = 40,
+    franchise: str = "",
 ) -> list[dict]:
     """Split narration into ~5-second phrase windows (~40 words each).
 
@@ -94,7 +130,7 @@ def split_into_windows(
             w_start = word_cursor - len(buf_words)
             windows.append({
                 "text": " ".join(buf_sentences),
-                "image_keywords": _window_keywords(" ".join(buf_sentences), topic),
+                "image_keywords": _window_keywords(" ".join(buf_sentences), topic, franchise),
                 "word_start": w_start,
                 "word_end": word_cursor,
             })
@@ -108,7 +144,7 @@ def split_into_windows(
         w_start = word_cursor - len(buf_words)
         windows.append({
             "text": " ".join(buf_sentences),
-            "image_keywords": _window_keywords(" ".join(buf_sentences), topic),
+            "image_keywords": _window_keywords(" ".join(buf_sentences), topic, franchise),
             "word_start": w_start,
             "word_end": word_cursor,
         })

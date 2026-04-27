@@ -1,0 +1,53 @@
+{
+  "skill_id": "brainrot",
+  "name": "Brainrot Shorts",
+  "description": "Ultra-fast, punchy short-form content for TikTok/Reels/Shorts. Rapid-fire facts with zero explanation. Sentences are 3-8 words. No connective tissue. Each line hits like a truck. Built for viewers with a 2-second attention span.",
+  "trigger_keywords": [
+    "brainrot",
+    "tiktok",
+    "reels",
+    "shorts",
+    "viral",
+    "quick",
+    "fast facts",
+    "insane facts",
+    "crazy facts",
+    "did you know",
+    "nobody knows",
+    "no one talks about"
+  ],
+  "content_types": [
+    "brainrot",
+    "viral",
+    "shorts"
+  ],
+  "moods": [
+    "hype",
+    "shock",
+    "energetic"
+  ],
+  "structure": {
+    "hook_rule": "State the most shocking fact in 6 words or less. No setup. No context. No 'Have you ever wondered...'. Drop the fact like a bomb and let it land. TEMPLATE: '[Subject] [shocking statement]. [1-word pause: Wait. No. Gone.] [Next shock immediately.]'",
+    "pacing_rule": "MAX 8 words per sentence. Mix very short (2-4 words) with medium (6-8 words) naturally — no fixed pattern. Use single-word punches ('Wait.' 'Gone.' 'Impossible.') sparingly, only on the 2-3 most shocking facts. NEVER apply the same sentence structure repeatedly. Let the facts dictate the rhythm.",
+    "tone": "Your hype friend texting you insane facts at 2am. Zero academic language. Zero explanations. Pure shock, one fact after another. The viewer should feel overwhelmed in the best way.",
+    "ending_rule": "End with one short sentence (5 words max) that reframes the whole video. No 'in conclusion', no 'this shows us', no 'changed forever'. Just the final punch."
+  },
+  "prompt_injection": "BRAINROT FORMAT — CRITICAL RULES:\n- Sentences: MAX 8 words. Shorter is better.\n- No connective phrases: BANNED — 'this connects to', 'the reason is', 'which means', 'and if we trace', 'now link this to', 'the reason this matters', 'it is worth noting'.\n- Assert facts bluntly. Never explain why something is surprising — just say the thing.\n- Use single-word sentences for punch: 'Wait.' 'No.' 'Gone.' 'Nothing.' 'Insane.'\n- No multi-clause sentences. One fact = one sentence.\n- Rhetorical questions only if very short: 'How?' 'Why?' 'Who?' — not full sentences.\n- The viewer already knows the character. Skip all background intro.\n\nHOOK — CRITICAL:\n- State ONE specific shocking fact in the first sentence. Then IMMEDIATELY move to a different fact.\n- NEVER rephrase or restate the hook fact in sentences 2, 3, or 4.\n- BAD: 'Toji killed Gojo. Wait. He defeated the strongest. Insane. He actually killed him.' — three sentences, one fact.\n- GOOD: 'Toji killed Gojo. Wait. Zero energy. No technique. Just his body.' — one fact, then NEW details.\n\nPACING — NATURAL, NOT MECHANICAL:\n- Write rapid-fire short sentences that flow naturally. Do NOT apply any fixed pattern to every sentence.\n- Use single-word punches ('Wait.' 'Impossible.' 'Gone.') ONLY on the 2-3 most shocking facts — not after every sentence.\n- BAD (robotic): 'Fact. REACTION. Detail. Fact. REACTION. Detail.' — same structure every time.\n- GOOD (natural): 'Two or three facts in a row. Then suddenly — Wait. Then keep going.'\n- Each fact gets as many sentences as it needs. Some facts need one sentence. Some need three.\n\nLENGTH — CRITICAL:\n- Target 180-220 words. Not shorter, not longer.\n- Use ONLY facts from the research. Never invent statements.\n- For each fact: state it, then immediately state its direct consequence or what it means in a fight. Then move on.\n- BAD: 'Toji had decades of practice.' — states fact, stops.\n- GOOD: 'Toji had decades of practice. He knew every blind spot. Maki has months.' — fact + consequence + contrast.\n- Do NOT pad with vague filler: 'his power grows', 'his legend will rise', 'the future is uncertain'.",
+  "extraction_hint": "A fact MATCHES if it is specific, surprising, and statable in one short sentence — a number, a death, a betrayal, a hidden mechanic, a record. A fact DOES NOT MATCH if it requires explanation to be interesting, or if it is general background knowledge any casual fan knows.",
+  "example_hook_en": "[topic] literally should not exist. Here is why.",
+  "example_hook_vi": "[topic] thực sự không nên tồn tại. Đây là lý do.",
+  "quality_gate_questions": [
+    "HOOK: Does the hook state a specific shocking fact in 6 words or less — no setup, no vague promise?",
+    "PACING: Are all sentences under 10 words? Are there single-word punches for emphasis?",
+    "NO CONNECTIVES: Is the script free of 'this connects to', 'the reason this matters', 'and if we trace'?",
+    "ASSERTION: Does each sentence state a fact bluntly without explaining why it is surprising?",
+    "ENDING: Is the last sentence 5 words or less and a genuine punch — not a generic closer?"
+  ],
+  "coverage_dimensions": [
+    "most shocking single fact stated bluntly upfront",
+    "specific number, record, or stat that sounds insane",
+    "a death, betrayal, loss, or dark consequence",
+    "hidden mechanic or rule most fans do not know",
+    "final reframing fact that changes how the viewer sees everything"
+  ]
+}

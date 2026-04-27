@@ -28,6 +28,65 @@ _POPUP_CONTENT_SIGNALS = frozenset({
     "investigation", "trial", "scandal", "war", "battle", "crisis",
 })
 
+_BRAINROT_PACING = (
+    "MAX 8 words per sentence. Use single-word sentences for impact: 'Wait.' 'No.' 'Gone.' 'Insane.'\n"
+    "For EVERY fact follow this 3-line pattern:\n"
+    "  1. The fact (4-8 words)\n"
+    "  2. One reaction word or short question (1-3 words)\n"
+    "  3. A follow-up consequence or deeper detail (4-8 words)\n"
+    "Example: 'He never learned healing. Impossible. His own power does it for him.'\n"
+    "Do this for every fact. Never move to the next fact after just one sentence."
+)
+
+_BRAINROT_TONE = (
+    "Your hype friend texting insane facts at 2am. Zero academic language. "
+    "Zero explanations. Pure shock, one fact after another."
+)
+
+_BRAINROT_INJECTION = (
+    "BRAINROT FORMAT — CRITICAL RULES:\n"
+    "- Sentences: MAX 8 words. Shorter is better.\n"
+    "- BANNED phrases: 'this connects to', 'the reason is', 'which means', "
+    "'and if we trace', 'the reason this matters', 'it is worth noting'.\n"
+    "- Assert facts bluntly. Never explain why something is surprising — just say the thing.\n"
+    "- Use single-word sentences for punch: 'Wait.' 'No.' 'Gone.' 'Insane.'\n"
+    "- Use ONLY facts from the research. When all facts are covered, STOP. Never invent filler.\n"
+    "- Do NOT pad with vague statements like 'his power grows', 'the future is uncertain'.\n"
+    "- The viewer already knows the characters. Skip all background intro."
+)
+
+
+def _apply_brainrot_overlay(skill: dict) -> dict:
+    """Inject brainrot pacing/tone on top of any content skill's structure.
+
+    Reads rules from skills/brainrot.json so overlay always stays in sync
+    with the brainrot skill definition.
+    """
+    import copy
+    import json
+    from pathlib import Path as _Path
+    brainrot_path = _Path(__file__).parent.parent.parent / "skills" / "brainrot.json"
+    brainrot = json.loads(brainrot_path.read_text(encoding="utf-8"))
+
+    skill = copy.deepcopy(skill)
+    structure = skill.setdefault("structure", {})
+    brainrot_structure = brainrot.get("structure", {})
+    structure["tone"] = brainrot_structure.get("tone", "")
+    structure["pacing_rule"] = brainrot_structure.get("pacing_rule", "")
+    skill["prompt_injection"] = (brainrot.get("prompt_injection", "") or "").strip()
+    return skill
+
+
+def _clean_script_text(script: dict[str, Any]) -> dict[str, Any]:
+    """Strip LLM formatting artifacts from block text (spaces before punctuation, double spaces)."""
+    for block in script.get("blocks", []):
+        text = block.get("text", "")
+        if text:
+            text = re.sub(r'\s+([.,!?;:])', r'\1', text)
+            text = re.sub(r' {2,}', ' ', text)
+            block["text"] = text.strip()
+    return script
+
 
 def apply_citation_cleanup(
     script: dict[str, Any],
@@ -71,6 +130,7 @@ def run_script(
     facts: list[dict],
     plan: AgentPlan,
     emit: Optional[Callable[[dict], None]] = None,
+    knowledge_doc: str = "",
 ) -> ScriptResult:
     """Write a narration script from facts, lint it, and decide image display.
 
@@ -103,8 +163,18 @@ def run_script(
     from .skill_selector import select_skill
 
     forced_skill = plan.user_overrides.skill_id if plan.user_overrides else None
-    selected_skill = select_skill(plan, forced_skill_id=forced_skill)
-    _emit("script", f"Using skill: {selected_skill.get('name', 'General')}")
+    is_brainrot = plan.style == "brainrot"
+
+    if is_brainrot and forced_skill != "brainrot":
+        # Select content skill without "brainrot" in the BM25 query (it would
+        # match the standalone brainrot skill instead of the content skill)
+        _plan_no_style = plan.model_copy(update={"style": ""})
+        selected_skill = select_skill(_plan_no_style, forced_skill_id=forced_skill)
+        selected_skill = _apply_brainrot_overlay(selected_skill)
+    else:
+        selected_skill = select_skill(plan, forced_skill_id=forced_skill)
+
+    _emit("script", f"Using skill: {selected_skill.get('name', 'General')}{' [brainrot]' if is_brainrot else ''}")
     logger.info("Script skill: %s", selected_skill.get("skill_id", "_default"))
 
     # --- WRITE ---
@@ -124,10 +194,12 @@ def run_script(
             skill=selected_skill,
             video_goal=plan.user_prompt or plan.topic,
             must_cover=", ".join(plan.must_cover or []),
+            knowledge_doc=knowledge_doc,
         )
         script = writer_result["script"]
         writer_meta = writer_result.get("meta", {})
         script = apply_citation_cleanup(script, facts, warnings)
+        script = _clean_script_text(script)
 
         # Validate: if language is Vietnamese but script came back in English, reject it
         if plan.language.startswith("vi"):
@@ -228,6 +300,7 @@ def run_script(
                     skill=selected_skill,
                     video_goal=plan.user_prompt or plan.topic,
                     must_cover=", ".join(plan.must_cover or []),
+                    knowledge_doc=knowledge_doc,
                 )
                 script2 = writer_result2["script"]
                 lint_result2 = lint_script(script2)
@@ -258,7 +331,13 @@ def run_script(
     if blocks and blocks[0].get("text"):
         try:
             from ..images.phrase_windows import split_into_windows
-            blocks[0]["windows"] = split_into_windows(blocks[0]["text"], plan.topic)
+            # Pick shortest alias ≤8 chars as franchise tag (e.g. "JJK" not "Toji Fushiguro")
+            franchise = ""
+            for alias in (plan.entity_aliases or []):
+                if alias and len(alias.strip()) <= 8:
+                    franchise = alias.strip()
+                    break
+            blocks[0]["windows"] = split_into_windows(blocks[0]["text"], plan.topic, franchise=franchise)
         except Exception as exc:
             warnings.append(f"Phrase window split failed: {exc}")
 

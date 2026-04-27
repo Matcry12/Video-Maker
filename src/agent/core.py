@@ -147,6 +147,7 @@ class VideoAgent:
 
         facts = research_result.get("facts", [])
         sources_used = research_result.get("sources_used", [])
+        knowledge_doc = research_result.get("coverage", "")
 
         if not facts:
             return AgentResult(
@@ -161,12 +162,12 @@ class VideoAgent:
             "facts": facts,
             "sources_used": sources_used,
             "warnings": research_result.get("warnings", []),
-            "knowledge_doc": research_result.get("coverage", ""),
+            "knowledge_doc": knowledge_doc,
         })
 
         # === PHASE 3: SCRIPT ===
         self.state.phase = AgentPhase.SCRIPT
-        script_result = run_script(facts, plan, emit=self._emit)
+        script_result = run_script(facts, plan, emit=self._emit, knowledge_doc=knowledge_doc)
         all_warnings.extend(script_result.warnings)
         self.state.script = script_result.script
 

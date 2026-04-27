@@ -36,6 +36,7 @@ def chat_completion(
     temperature: float = 0.3,
     timeout: float = 25.0,
     max_retries_429: int = 2,
+    max_tokens: int = 2048,
 ) -> str:
     """Send a chat completion using per-stage provider + model config.
 
@@ -50,6 +51,7 @@ def chat_completion(
         temperature=temperature,
         timeout=timeout,
         max_retries_429=max_retries_429,
+        max_tokens=max_tokens,
     ).text
 
 
@@ -59,9 +61,11 @@ def chat_completion_with_meta(
     user: str,
     stage: str | None = None,
     model: str = "",
+    gemini_model: str = "",
     temperature: float = 0.3,
     timeout: float = 25.0,
     max_retries_429: int = 2,
+    max_tokens: int = 2048,
 ) -> LLMResponse:
     """Chat completion that reports which provider/model answered.
 
@@ -81,7 +85,7 @@ def chat_completion_with_meta(
         stage_default=cfg.groq_model,
         stage_provided=stage is not None,
     )
-    gemini_model = cfg.gemini_model
+    gemini_model = gemini_model or cfg.gemini_model
 
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
     groq_key = os.getenv("GROQ_API_KEY", "").strip()
@@ -134,6 +138,7 @@ def chat_completion_with_meta(
                     temperature=temperature,
                     timeout=timeout,
                     max_retries_429=max_retries_429,
+                    max_tokens=max_tokens,
                 )
                 _consecutive_failures["groq"] = 0
                 return LLMResponse(text=text, provider="groq", model=groq_model)
@@ -216,6 +221,7 @@ def _call_groq(
     temperature: float,
     timeout: float,
     max_retries_429: int,
+    max_tokens: int = 2048,
 ) -> str:
     """Call Groq with retry on 429."""
     from groq import Groq
@@ -229,6 +235,7 @@ def _call_groq(
                 temperature=temperature,
                 stream=False,
                 messages=messages,
+                max_tokens=max_tokens,
             )
             choices = list(getattr(response, "choices", None) or [])
             if not choices:

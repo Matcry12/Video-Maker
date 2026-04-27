@@ -71,6 +71,7 @@ def write_script_from_facts(
     skill: dict | None = None,
     video_goal: str = "",
     must_cover: str = "",
+    knowledge_doc: str = "",
 ) -> dict:
     """
     Convert ranked facts into a narration script.
@@ -98,6 +99,7 @@ def write_script_from_facts(
             skill=skill,
             video_goal=video_goal,
             must_cover=must_cover,
+            knowledge_doc=knowledge_doc,
         )
     except Exception as exc:
         raise RuntimeError(f"Script LLM unavailable: {exc}") from exc
@@ -121,6 +123,7 @@ def write_script_from_facts(
                 skill=skill,
                 video_goal=video_goal,
                 must_cover=must_cover,
+                knowledge_doc=knowledge_doc,
             )
             meta = retry_meta
         except Exception as exc:
@@ -168,40 +171,46 @@ def _build_system_prompt(
     video_goal: str = "",
     must_cover: str = "",
 ) -> str:
-    structure = skill.get("structure", {}) if skill else {}
     is_vietnamese = language.startswith("vi")
-
-    if skill and skill.get("structure", {}).get("tone"):
-        skill_tone = skill["structure"]["tone"]
-    elif style:
-        skill_tone = style
-    else:
-        skill_tone = "fast, curiosity-driven short-form narration with sharp pacing and spoken rhythm."
-
-    hook_rule = structure.get("hook_rule") or (
-        "Scan ALL the facts. Find the MOST SHOCKING one (a death count, a dark secret, "
-        "a betrayal, a mind-blowing number). Put it FIRST.\n"
-        "- The first sentence must make viewers think 'WHAT?! I need to know more.'\n"
-        "- TEMPLATE: '[Shocking statement]. [Question that creates curiosity]. [Promise of revelation].'"
-    )
-
-    pacing_rule = structure.get("pacing_rule") or (
-        "Alternate sentence length: short punch, then longer context, then short punch.\n"
-        "- Every 6 seconds of audio (roughly 15-20 words), there should be a new revelation or twist."
-    )
-
-    if skill:
-        example_hook = skill.get("example_hook_vi" if is_vietnamese else "example_hook_en", "")
-    else:
-        example_hook = ""
-    if not example_hook:
-        example_hook = (
-            "Good: 'This city was abandoned overnight. 350,000 people just... left.'"
-        )
-    # Substitute [topic] placeholder with the actual topic so the LLM doesn't copy it literally
     _topic_sub = video_goal or "the topic"
-    example_hook = example_hook.replace("[topic]", _topic_sub).replace("[myth]", _topic_sub).replace("[theory]", _topic_sub)
-    hook_rule = hook_rule.replace("[topic]", _topic_sub).replace("[year]", "the year")
+
+    # Build skill_prompt_injection from all skill structure fields
+    # Skill drives: tone, hook, pacing, ending, style rules — no duplication in base template
+    injection_parts: list[str] = []
+    if skill:
+        structure = skill.get("structure", {})
+        tone = structure.get("tone", "") or style or ""
+        hook_rule = (structure.get("hook_rule") or "").replace("[topic]", _topic_sub).replace("[year]", "the year")
+        pacing_rule = structure.get("pacing_rule") or ""
+        ending_rule = structure.get("ending_rule") or ""
+        prompt_injection = (skill.get("prompt_injection", "") or "").strip()
+        example_hook = (skill.get("example_hook_vi" if is_vietnamese else "example_hook_en", "") or "")
+        example_hook = example_hook.replace("[topic]", _topic_sub).replace("[myth]", _topic_sub).replace("[theory]", _topic_sub)
+
+        if tone:
+            injection_parts.append(f"STYLE: {tone}")
+        if prompt_injection:
+            injection_parts.append(prompt_injection)
+        # Only add structure fields if not already covered by prompt_injection
+        inj_upper = prompt_injection.upper()
+        if hook_rule and "HOOK" not in inj_upper:
+            hook_block = f"HOOK:\n- {hook_rule}"
+            if example_hook:
+                hook_block += f"\n- Example: {example_hook}"
+            injection_parts.append(hook_block)
+        if pacing_rule and "PACING" not in inj_upper:
+            injection_parts.append(f"PACING: {pacing_rule}")
+        if ending_rule and "ENDING" not in inj_upper:
+            injection_parts.append(f"ENDING: {ending_rule}")
+    else:
+        injection_parts.append(
+            "STYLE: fast, curiosity-driven short-form narration with sharp pacing.\n"
+            "HOOK: Find the most shocking fact and open with it. First sentence must grab attention immediately.\n"
+            "PACING: Alternate short punchy sentences with medium ones. Each fact escalates stakes.\n"
+            "ENDING: Last sentence loops back to hook subject with a new revelation."
+        )
+
+    skill_prompt_injection = "\n\n".join(injection_parts)
 
     # Build citation requirement block
     facts_with_ids = [f for f in facts if f.fact_id]
@@ -220,23 +229,16 @@ def _build_system_prompt(
             "- Every declarative sentence in the body MUST cite at least one fact.\n"
             "- The hook (first sentence) and the closing loop-back sentence do not require citations.\n"
             "- Do NOT invent F-numbers that weren't provided.\n"
-            "- Do NOT cite facts whose IDs are not in the provided list.\n"
             "\nFACTS (cite by ID):\n"
             f"{fact_list_with_ids}"
         )
     else:
         citation_requirement = ""
 
-    skill_prompt_injection = (skill.get("prompt_injection", "") or "") if skill else ""
-
     return _render_prompt(
         "script_write",
         video_goal=video_goal or "",
         must_cover=must_cover or "",
-        skill_tone=skill_tone,
-        skill_hook_rule=hook_rule,
-        skill_pacing_rule=pacing_rule,
-        skill_example_hook=example_hook,
         skill_prompt_injection=skill_prompt_injection,
         citation_requirement=citation_requirement,
     )
@@ -253,6 +255,7 @@ def _generate_via_llm(
     skill: dict | None = None,
     video_goal: str = "",
     must_cover: str = "",
+    knowledge_doc: str = "",
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     system_prompt = _build_system_prompt(
         facts,
@@ -271,6 +274,7 @@ def _generate_via_llm(
         style=style,
         extra_constraints=extra_constraints,
         skill=skill,
+        knowledge_doc=knowledge_doc,
     )
 
     from ..llm_client import chat_completion_with_meta
@@ -307,21 +311,8 @@ def _build_user_message(
     style: str | None,
     extra_constraints: list[str] | None = None,
     skill: dict | None = None,
+    knowledge_doc: str = "",
 ) -> str:
-    facts_payload: list[dict[str, Any]] = []
-    for i, f in enumerate(facts):
-        entry: dict[str, Any] = {
-            "id": i,
-            "fact": f.fact_text,
-        }
-        if f.hook_text:
-            entry["hook"] = f.hook_text
-        if f.suggested_role:
-            entry["suggested_role"] = f.suggested_role
-        if f.reason_tags:
-            entry["tags"] = f.reason_tags
-        facts_payload.append(entry)
-
     constraint_block = ""
     if extra_constraints:
         constraint_block = (
@@ -330,7 +321,6 @@ def _build_user_message(
             + "\n"
         )
 
-    # Language instruction
     lang_block = (
         f"Requested language: {language}\n"
         f"CRITICAL: ALL block text MUST be written in {language}. "
@@ -338,24 +328,25 @@ def _build_user_message(
         f"The audience speaks {language}. Do NOT output English text when the requested language is not English.\n"
     )
 
-    user_msg = (
-        f"{lang_block}"
-        f"{constraint_block}"
-        f"\nINPUT FACTS:\n{json.dumps(facts_payload, ensure_ascii=False, indent=2)}"
-    )
+    # Rich research context — strip [src: URL] noise before sending to script LLM
+    research_block = ""
+    if knowledge_doc:
+        clean_doc = re.sub(r'\s*\[src:[^\]]*\]', '', knowledge_doc).strip()
+        research_block = f"\nRESEARCH CONTEXT (use for narrative depth and section flow):\n{clean_doc}\n"
 
-    # Append citation IDs when facts carry them
+    # Citation ID list — always present when facts carry IDs
     facts_with_ids = [f for f in facts if f.fact_id]
     if facts_with_ids:
         fact_list_with_ids = "\n".join(
             f"{f.fact_id}: {f.fact_text[:150]}" for f in facts_with_ids
         )
-        user_msg += (
-            "\n\nFACTS (cite by ID):\n"
-            f"{fact_list_with_ids}\n"
-        )
+        cite_block = f"\nFACTS (cite by ID in your script):\n{fact_list_with_ids}\n"
+    else:
+        # Fallback: no IDs, dump raw facts
+        facts_payload = [{"id": i, "fact": f.fact_text} for i, f in enumerate(facts)]
+        cite_block = f"\nINPUT FACTS:\n{json.dumps(facts_payload, ensure_ascii=False, indent=2)}\n"
 
-    return user_msg
+    return f"{lang_block}{constraint_block}{research_block}{cite_block}"
 
 
 def _validate_anti_repetition(script: dict[str, Any]) -> list[str]:
