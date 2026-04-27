@@ -145,6 +145,12 @@ def _plan_with_llm(prompt: str) -> AgentPlan:
 
     narrative_dynamic = str(data.get("narrative_dynamic") or "").strip()
 
+    # Parse and validate skill_id against available skills
+    from .skill_selector import load_skills as _load_skills
+    _valid_skill_ids = {s["skill_id"] for s in _load_skills()}
+    raw_skill_id = str(data.get("skill_id") or "").strip()
+    skill_id = raw_skill_id if raw_skill_id in _valid_skill_ids else ""
+
     return AgentPlan(
         topic=str(data.get("topic") or "").strip(),
         language=str(data.get("language") or "en-US").strip(),
@@ -165,6 +171,7 @@ def _plan_with_llm(prompt: str) -> AgentPlan:
         must_cover=must_cover,
         entity_cards=entity_cards,
         narrative_dynamic=narrative_dynamic,
+        skill_id=skill_id,
     )
 
 

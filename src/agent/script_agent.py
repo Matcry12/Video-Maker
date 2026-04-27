@@ -162,7 +162,12 @@ def run_script(
     # --- SELECT SKILL ---
     from .skill_selector import select_skill
 
-    forced_skill = plan.user_overrides.skill_id if plan.user_overrides else None
+    # Priority: user_overrides.skill_id > plan.skill_id (from plan LLM) > BM25 auto-select
+    forced_skill = (
+        (plan.user_overrides.skill_id if plan.user_overrides else None)
+        or plan.skill_id
+        or None
+    )
     is_brainrot = plan.style == "brainrot"
 
     if is_brainrot and forced_skill != "brainrot":

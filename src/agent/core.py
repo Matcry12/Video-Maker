@@ -136,7 +136,7 @@ class VideoAgent:
             topic=plan.topic,
             search_queries=plan.search_queries,
             language=plan.language,
-            skill_id=(plan.user_overrides.skill_id or '') if plan.user_overrides else '',
+            skill_id=(plan.user_overrides.skill_id or '') if plan.user_overrides else (plan.skill_id or ''),
             topic_aliases=plan.entity_aliases,
             emit=self._emit,
             user_prompt=plan.user_prompt,

@@ -44,7 +44,8 @@ OUTPUT: strict JSON only, no markdown, no preamble, no prose after the JSON.
   "bgm_mood": "",
   "search_queries": ["angle-specific query 1", "angle-specific query 2", "..."],
   "domain_preferences": ["optional preferred domain hints"],
-  "must_cover": ["angle1", "angle2"]
+  "must_cover": ["angle1", "angle2"],
+  "skill_id": "lore_deep_dive" | "comparison" | "dark_secrets" | "explained" | "theory" | "did_you_know" | "easter_eggs" | "story_time" | "timeline" | "top_list" | "brainrot" | "comedy" | "debunked" | "what_happened_to" | ""
 }
 
 RULES:
@@ -58,4 +59,5 @@ RULES:
 - must_cover must contain angles explicitly stated in the user prompt. Do not invent angles. For topic-only prompts (no specific ask), return must_cover=[].
 - topic must be the shortest clean canonical form.
 - If user prompt is in Vietnamese, language="vi-VN" and generate English search queries.
+- skill_id: pick the single best content skill for this video. Use "comparison" for vs/versus/who would win topics; "dark_secrets" for hidden truths/betrayals/dark history; "theory" for fan theories/speculation; "lore_deep_dive" for in-universe mechanics/worldbuilding; "explained" for factual explainers; "brainrot" only if user explicitly asks for brainrot/TikTok/shorts style. Leave "" if unsure.
 - If uncertain about a field, use "" or sensible default, not null.

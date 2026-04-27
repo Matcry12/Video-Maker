@@ -46,6 +46,7 @@ class AgentPlan(BaseModel):
     must_cover: list[str] = Field(default_factory=list)     # angles extracted from user_prompt
     entity_cards: list[dict] = Field(default_factory=list)  # per-entity decomposition from plan LLM
     narrative_dynamic: str = ""    # contrast/transformation the user is asking about
+    skill_id: str = ""             # skill selected by plan LLM (e.g. "comparison", "brainrot")
     forbidden_entities: list[str] = Field(default_factory=list)
     image_display: str = "popup"
     bgm_mood: str = ""                       # "intense"|"calm"|"mystery"|"epic"|"emotional"|""
