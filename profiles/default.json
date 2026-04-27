@@ -20,6 +20,7 @@
       "page_text_max_chars": 8000,
       "agentic_provider": "gemini",
       "agentic_model": "gemini-3.1-flash-lite-preview",
+      "agentic_rate_limit_rpm": 0,
       "bm25_threshold": 1.2,
       "min_grounded_facts": 6,
       "min_tier_diversity": 2,

@@ -130,14 +130,6 @@ def _plan_with_llm(prompt: str) -> AgentPlan:
         domain_prefs = []
     domain_prefs = [str(d).strip() for d in domain_prefs if str(d).strip()][:6]
 
-    must_cover_raw = data.get("must_cover") or []
-    if not isinstance(must_cover_raw, list):
-        must_cover_raw = []
-    must_cover = [str(a).strip() for a in must_cover_raw if str(a).strip()][:5]
-
-    if not must_cover:
-        must_cover = _heuristic_must_cover(prompt)
-
     entity_cards_raw = data.get("entity_cards") or []
     if not isinstance(entity_cards_raw, list):
         entity_cards_raw = []
@@ -168,7 +160,7 @@ def _plan_with_llm(prompt: str) -> AgentPlan:
         domain_preferences=domain_prefs,
         forbidden_entities=[],
         user_prompt=prompt,
-        must_cover=must_cover,
+        must_cover=[],
         entity_cards=entity_cards,
         narrative_dynamic=narrative_dynamic,
         skill_id=skill_id,

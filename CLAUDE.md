@@ -84,6 +84,22 @@ Flask app in `src/web.py`. Templates in `templates/` (Jinja2). Frontend JS in `s
 - `AgentConfig` (user-facing overrides) flows through `_merge_config()` in `plan_agent.py` into `AgentPlan` (internal plan). `skill_id` lives on `AgentConfig`/`user_overrides`, NOT on `AgentPlan` — access it via `plan.user_overrides.skill_id`.
 - Edit hooks may report false failures after successful tool results — trust the tool result, not the hook message.
 
+## Testing Rules (MANDATORY)
+
+- **Always test before reporting done.** After writing or changing code, run it and show actual output. Never claim something works without evidence.
+  - Lab scripts: run `./.venv/bin/python lab/<path>/agent.py` and paste the output.
+  - LLM prompts: call the model and paste the raw response.
+  - Pipeline changes: trigger the relevant stage and verify the log line changes as expected.
+- **Never commit untested code.** If a run fails, fix it first, then commit.
+- **Lab before main.** All experiments go in `lab/`. Only move to `src/` when the user explicitly says "apply to main flow" after seeing test results.
+
+## Explaining Problems (MANDATORY)
+
+- **Always give a concrete example when describing a bug or problem.** Abstract descriptions are not enough.
+  - Bad: "The image keywords are too generic."
+  - Good: "Block text = 'Heavenly Restriction made Maki unable to use cursed energy'. Current output keywords: `['Heavenly', 'Restriction', 'She']`. Expected: `['Maki Zenin', 'Heavenly Restriction', 'Jujutsu Kaisen']`."
+- Show before/after for every proposed fix so the user can judge whether it's worth doing.
+
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph
 

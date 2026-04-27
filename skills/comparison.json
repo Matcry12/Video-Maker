@@ -44,8 +44,8 @@
       "Và yếu tố quyết định là..."
     ]
   },
-  "prompt_injection": "FORMAT: VS battle comparison with round-by-round structure. CRITICAL: Use concrete numbers, stats, feats, and specific examples — never vague 'one is stronger' claims. Structure: PROVOCATIVE MATCHUP HOOK → Round 1 (obvious winner) → Round 2 (upset/flip) → Round 3 (the clincher nobody expected) → WINNER REVEAL + twist caveat. Build tension like a real fight — let each side shine before the verdict. The winner reveal should feel EARNED, not arbitrary. End with a twist that keeps viewers debating in comments. Minimum 200 words.",
-  "extraction_hint": "A fact MATCHES if it contains: specific power levels, combat stats, measurable feats, records, or direct comparisons between the two subjects with concrete numbers. A fact DOES NOT MATCH if it describes: personality traits, appearance, generic character roles, or any quality without a measurable or comparative dimension. When in doubt: ask 'can this fact be used to argue one subject is stronger/better/faster than the other?' If no, reject it.",
+  "prompt_injection": "FORMAT: VS battle comparison with round-by-round structure. Use specific techniques, fight events, key moments, and decisive exchanges — never vague 'one is stronger' claims. Structure: PROVOCATIVE MATCHUP HOOK → Round 1 (obvious winner) → Round 2 (upset/flip) → Round 3 (the clincher nobody expected) → WINNER REVEAL + twist caveat. Build tension like a real fight — let each side shine before the verdict. The winner reveal should feel EARNED, not arbitrary. End with a twist that keeps viewers debating in comments. Minimum 200 words.",
+  "extraction_hint": "A fact MATCHES if it describes: specific techniques or abilities, fight events and turning points, how one subject can hurt or counter the other, key moments in their confrontation, fight outcome, or direct comparisons between the two subjects. A fact DOES NOT MATCH if it describes: generic character introductions, appearance, or backstory with no bearing on the comparison. When in doubt: ask 'can this fact be used to argue one subject has an advantage over the other in any round?' If yes, keep it.",
   "example_hook_en": "Goku vs Saitama. Everyone picks Goku. But wait until you see what Saitama's feats actually prove.",
   "example_hook_vi": "Goku vs Saitama. Ai cũng chọn Goku. Nhưng hãy đợi đến khi bạn thấy Saitama thực sự làm được gì.",
   "quality_gate_questions": [
@@ -56,10 +56,10 @@
     "EVIDENCE: Is the comparison based on specific facts, stats, or feats rather than vibes?"
   ],
   "coverage_dimensions": [
-    "subject A identity and core strengths",
-    "subject B identity and core strengths",
-    "key performance or quality comparison (most important metric)",
-    "secondary comparison or surprising differentiator",
-    "fan and critic consensus on which is better and why"
+    "subject A specific techniques, feats, and combat/competitive mechanics",
+    "subject B specific techniques, feats, and combat/competitive mechanics",
+    "how the confrontation or competition played out — key moments, turning points, decisive exchanges",
+    "the strategic or mechanical advantage — why one can hurt, counter, or outperform the other",
+    "fight outcome or final verdict — who wins, why, and what twist keeps the debate alive"
   ]
 }

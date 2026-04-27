@@ -157,6 +157,13 @@ class RagStore:
                 })
             if not texts:
                 return 0
+            # ChromaDB upsert requires unique IDs within the same batch
+            seen: set[str] = set()
+            deduped = [(t, m, i) for t, m, i in zip(texts, metadatas, ids)
+                       if not (i in seen or seen.add(i))]  # type: ignore[func-returns-value]
+            if not deduped:
+                return 0
+            texts, metadatas, ids = [list(x) for x in zip(*deduped)]
             embedder = _get_embedder()
             embeddings = embedder.encode(texts, normalize_embeddings=True, show_progress_bar=False).tolist()
             col.upsert(ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas)

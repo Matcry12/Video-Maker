@@ -15,8 +15,7 @@ STEP 2 — GROUND: For each named entity, briefly recall:
 
 STEP 3 — DERIVE: Based on entity grounding, identify:
   - The narrative dynamic: the specific contrast, transformation, or conflict the viewer is asking about
-  - 2-5 concrete must_cover angles (short verb+noun phrases, e.g. "Ten Shadows technique mechanics", "Sukuna wielding Megumi's shikigami post-possession")
-  - 1-2 targeted search queries per angle — name the specific event, technique, or usage, AND include a query for community/meme context if applicable.
+  - 3-5 targeted search queries — name the specific event, technique, or scene, AND include a query for community/meme context if applicable.
 
 OUTPUT: strict JSON only, no markdown, no preamble, no prose after the JSON.
 
@@ -44,7 +43,6 @@ OUTPUT: strict JSON only, no markdown, no preamble, no prose after the JSON.
   "bgm_mood": "",
   "search_queries": ["angle-specific query 1", "angle-specific query 2", "..."],
   "domain_preferences": ["optional preferred domain hints"],
-  "must_cover": ["angle1", "angle2"],
   "skill_id": "lore_deep_dive" | "comparison" | "dark_secrets" | "explained" | "theory" | "did_you_know" | "easter_eggs" | "story_time" | "timeline" | "top_list" | "brainrot" | "comedy" | "debunked" | "what_happened_to" | ""
 }
 
@@ -56,8 +54,15 @@ RULES:
 - search_queries MUST be angle-specific. Name the concrete technique, event, or scene being asked about — NOT a generic comparison phrase.
   BAD: "Sukuna ability comparison", "Megumi powers"
   GOOD: "Sukuna Ten Shadows technique Megumi body possession", "Sukuna Mahoraga Gojo fight", "Ten Shadows shikigami technique JJK"
-- must_cover must contain angles explicitly stated in the user prompt. Do not invent angles. For topic-only prompts (no specific ask), return must_cover=[].
 - topic must be the shortest clean canonical form.
 - If user prompt is in Vietnamese, language="vi-VN" and generate English search queries.
-- skill_id: pick the single best content skill for this video. Use "comparison" for vs/versus/who would win topics; "dark_secrets" for hidden truths/betrayals/dark history; "theory" for fan theories/speculation; "lore_deep_dive" for in-universe mechanics/worldbuilding; "explained" for factual explainers; "brainrot" only if user explicitly asks for brainrot/TikTok/shorts style. Leave "" if unsure.
+- skill_id: pick the single best content skill for this video.
+  - "comparison": vs/versus/who would win/who is stronger topics — two subjects being compared
+  - "easter_eggs": hidden details, foreshadowing, secrets hidden IN the story/show/game itself (easter eggs, callbacks, subtle clues). Use this for "hidden secrets", "things you missed", "hidden details", "foreshadowing".
+  - "dark_secrets": real-world dark truths, controversies, scandals, or disturbing facts ABOUT a creator/show/character that are not meant to be found. Use this for "dark history", "dark truth", "controversy", "what they don't want you to know".
+  - "lore_deep_dive": in-universe mechanics, worldbuilding, power systems, lore explanations
+  - "theory": fan theories, speculation, "what if" scenarios
+  - "explained": factual explainers about real-world or in-universe concepts
+  - "brainrot": only if user explicitly asks for brainrot/TikTok/shorts style
+  - Leave "" if unsure.
 - If uncertain about a field, use "" or sensible default, not null.

@@ -102,9 +102,6 @@ def run_agentic_research(
     prompt = user_prompt or topic
     if topic:
         prompt = f"{topic}: {prompt}"
-    if must_cover:
-        must_str = "\n".join(f"- {item}" for item in must_cover)
-        prompt += f"\n\nYou MUST specifically cover:\n{must_str}"
 
     emit({"phase": "research", "message": f"Agentic research: '{topic}' (skill: {resolved_skill})"})
     logger.info("Agentic research: topic=%r skill=%r provider=gemini", topic, resolved_skill)
@@ -114,6 +111,7 @@ def run_agentic_research(
     cfg = research_settings(topic_category=topic_category)
     provider = cfg.get("agentic_provider", "gemini")
     model = cfg.get("agentic_model", "gemma-4-31b-it")
+    rate_limit_rpm = int(cfg.get("agentic_rate_limit_rpm", 0))
 
     # Import lab agent — add lab to path if needed
     if str(PROJECT_ROOT) not in sys.path:
@@ -144,6 +142,7 @@ def run_agentic_research(
             sequential=True,
             model=model,
             provider=provider,
+            rate_limit_rpm=rate_limit_rpm,
         )
     except Exception as e:
         warnings.append(f"Agentic research failed: {e}. Falling back to classic research.")
