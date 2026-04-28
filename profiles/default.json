@@ -100,7 +100,7 @@
     },
     "stages": {
       "script":           { "providers": ["gemini", "groq"], "gemini_model": "gemini-3.1-flash-lite-preview", "groq_model": "llama-3.3-70b-versatile" },
-      "quality_gate":     { "providers": ["gemini", "groq"], "gemini_model": "gemini-3.1-flash-lite-preview", "groq_model": "llama-3.3-70b-versatile" },
+      "quality_gate":     { "providers": ["gemini", "groq"], "gemini_model": "gemini-3-flash-preview", "groq_model": "llama-3.3-70b-versatile" },
       "refine":           {},
       "research":         {},
       "research_extract": { "providers": ["gemini", "groq"], "gemini_model": "gemini-3.1-flash-lite-preview", "groq_model": "llama-3.3-70b-versatile", "no_think": true },

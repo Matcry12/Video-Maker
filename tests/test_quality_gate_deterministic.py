@@ -3,7 +3,7 @@ import pytest
 from src.agent.gate_deterministic import (
     check_grounding, check_contamination, check_hook_specificity,
     check_loop_back, check_sentence_length, run_deterministic_checks,
-    check_must_cover,
+    check_natural_speech,
 )
 from src.agent.models import AgentPlan
 
@@ -83,38 +83,59 @@ def test_run_all_perfect():
     assert total >= 48
 
 
-def _plan_with_must_cover(topic="Re:Zero", must_cover=None):
-    plan = _plan(topic)
-    plan.must_cover = must_cover or []
-    return plan
-
-
-def test_must_cover_all():
-    """All must_cover angles present in script → 10 pts."""
-    script = {"blocks": [
-        {"text": "Subaru's Return by Death is a cursed technique. Sukuna possesses him."},
-    ]}
-    plan = _plan_with_must_cover(must_cover=["cursed technique", "Sukuna"])
-    score, issue = check_must_cover(script, plan)
-    assert score == 10, f"expected 10, got {score}"
+def test_natural_speech_clean():
+    """Hyped-fan tone with mixed lengths and a hype word → full score."""
+    script = {"blocks": [{"text": (
+        "Tusk Act 4 is literally broken. "
+        "It cancels GER before it even fires. "
+        "Watch the clip and you'll see Johnny laugh as the world freezes. "
+        "Game over. "
+        "Giorno never had a chance."
+    )}]}
+    score, issue = check_natural_speech(script)
+    assert score == 10, f"expected 10, got {score} (issue: {issue})"
     assert issue is None
 
 
-def test_must_cover_partial():
-    """Only 1 of 2 must_cover angles present → 5 pts (60% threshold)."""
-    script = {"blocks": [
-        {"text": "Subaru's Return by Death is a cursed technique and ability."},
-    ]}
-    plan = _plan_with_must_cover(must_cover=["cursed technique", "Sukuna possession"])
-    score, issue = check_must_cover(script, plan)
-    # 1/2 = 50% covered — below 60% threshold → 0 pts
-    assert score == 0, f"expected 0 for 50% coverage, got {score}"
+def test_natural_speech_forbidden_vocab():
+    """Essay vocab triggers deduction."""
+    script = {"blocks": [{"text": (
+        "Tusk's infinity defies causality. Furthermore, GER's ability to nullify "
+        "actions establishes a paradigm shift in stand combat. However, the "
+        "outcome is therefore inevitable."
+    )}]}
+    score, issue = check_natural_speech(script)
+    assert score < 10, f"expected penalty, got {score}"
+    assert "essay vocab" in (issue or "")
 
 
-def test_must_cover_none():
-    """Empty must_cover → 10 pts (neutral, not penalized)."""
-    script = {"blocks": [{"text": "Some narration text here."}]}
-    plan = _plan_with_must_cover(must_cover=[])
-    score, issue = check_must_cover(script, plan)
-    assert score == 10, f"expected 10 for empty must_cover, got {score}"
-    assert issue is None
+def test_natural_speech_uniform_pacing():
+    """All-similar sentence lengths → robotic pacing penalty."""
+    script = {"blocks": [{"text": (
+        "Act one fires nail bullets. "
+        "Act two drills holes deeper. "
+        "Act three opens wormholes wide. "
+        "Act four cancels infinity. "
+        "Johnny wins the duel."
+    )}]}
+    score, issue = check_natural_speech(script)
+    assert score < 10, f"expected penalty for uniform pacing, got {score}"
+    assert issue is not None
+
+
+def test_natural_speech_no_hype_words():
+    """Decent prose but missing hype beats → small deduction."""
+    script = {"blocks": [{"text": (
+        "Johnny rides into Diego's territory with purpose. "
+        "Tusk is a stand he barely controls, yet it grows alongside his journey. "
+        "Each act unlocks something more dangerous."
+    )}]}
+    score, _ = check_natural_speech(script)
+    assert score == 8, f"expected 10 - 2 (no hype) = 8, got {score}"
+
+
+def test_natural_speech_empty():
+    script = {"blocks": [{"text": ""}]}
+    score, issue = check_natural_speech(script)
+    assert score == 0
+    assert issue == "No text"

@@ -29,11 +29,11 @@ class GateResult:
 
 
 _DEFAULT_QUESTIONS = [
-    "HOOK: Does the FIRST sentence contain a shocking fact, bold claim, or curiosity gap that stops a scrolling viewer?",
     "LORE vs RECAP: Does the script reveal hidden details/theories/dark secrets rather than basic plot summary?",
     "SURPRISE: Is there at least ONE moment where a knowledgeable fan would think 'I didn't know that'?",
-    "SEAMLESS LOOP: Does the last sentence connect back to the first, creating a natural replay loop?",
-    "PACING: Does the script escalate tension (each revelation more surprising than the last) or feel flat and monotonous?",
+    "NATURAL VOICE: Does this sound like a hyped fan explaining to a friend, NOT a wiki article being read aloud?",
+    "SENTENCE RHYTHM: Are sentence lengths varied (mixing short punches with longer flowing lines), or do they all feel the same length?",
+    "SPOKEN-NOT-WRITTEN: Is the script free of essay/forum vocab and flat reporting (e.g. 'It said X', 'It is Y', 'Furthermore...') that nobody says aloud?",
 ]
 
 
@@ -61,8 +61,15 @@ def _load_skill_questions(skill_id: str) -> list[str]:
 _SYSTEM_TEMPLATE = (
     "You are a brutally honest YouTube Shorts script evaluator optimized for "
     "viewer retention and algorithm performance.\n\n"
+    "CALIBRATION RULES — read before answering:\n"
+    "  - Default to 'no'. Only answer 'yes' when the criterion is CLEARLY met.\n"
+    "  - 'Pretty good' is NOT 'yes'. Fail decent-but-not-great scripts.\n"
+    "  - If your weakest_part complaint would contradict a 'yes' answer, that\n"
+    "    'yes' is wrong — change it to 'no'.\n"
+    "  - For any 'no', the weakest_part MUST quote the offending sentence in\n"
+    "    double quotes so a human can verify your call.\n\n"
     "Respond ONLY with strict JSON — no markdown, no prose, no explanation:\n"
-    '{"q1":"yes"|"no","q2":"yes"|"no","q3":"yes"|"no","q4":"yes"|"no","q5":"yes"|"no","weakest_part":"one short sentence describing the single weakest aspect"}'
+    '{"q1":"yes"|"no","q2":"yes"|"no","q3":"yes"|"no","q4":"yes"|"no","q5":"yes"|"no","weakest_part":"one short sentence; quote the offending text in double quotes"}'
 )
 
 
@@ -116,11 +123,12 @@ def run_quality_gate(script: dict, plan=None, facts=None, skill_id: str = "") ->
     combined = det_score + llm_score
 
     # Pass rules (all must hold):
-    #   det_score >= 40   (at most one det check can be a partial/failure)
+    #   det_score >= 45   (at most one 10-pt check can fully fail)
     #   llm_yes  >= 3    (majority of judge questions pass) OR gate was skipped
-    #   combined >= 80
+    #   combined >= 75   (was 88 when must_cover gave a free +10; rebalanced
+    #                    after replacing it with stricter natural-speech check)
     llm_ok = (llm_yes >= 3) or skipped
-    passed = (det_score >= 48) and llm_ok and (combined >= 88 or skipped)
+    passed = (det_score >= 45) and llm_ok and (combined >= 75 or skipped)
 
     return GateResult(
         passed=passed,

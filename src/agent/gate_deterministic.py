@@ -135,32 +135,79 @@ def check_sentence_length(script: dict) -> tuple[int, str | None]:
     return 0, f"Sentences too long for voice-over (avg {avg:.1f} words)"
 
 
-def check_must_cover(script: dict, plan) -> tuple[int, str | None]:
-    """Reward scripts that visibly address every must_cover angle.
+_FORBIDDEN_VOCAB = (
+    "causality", "acausality", "nullify", "nullification", "paradigm",
+    "furthermore", "however", "therefore", "in conclusion",
+)
+_FLAT_STARTERS = ("it is ", "there is ", "it said ")
+_HYPE_PATTERNS = (
+    r"\bliterally\b", r"\babsolutely\b",
+    r"dead\.?\s+forever", r"\band that'?s it\b",
+    r"the craziest thing", r"here'?s the part", r"here'?s where it flips",
+)
 
-    10 pts if all angles appear as substring (normalized) in the script text.
-    5 pts if >= 60% of angles are covered.
-    0 pts otherwise (or if must_cover is empty — neutral, not penalized).
+
+def check_natural_speech(script: dict) -> tuple[int, str | None]:
+    """Reward scripts that read like a hyped fan, not a wiki narrator.
+
+    Starts at 10. Deductions for essay vocab, uniform sentence pacing,
+    missing hype beats, and bullet-list cadence. Floors at 0.
     """
-    must_cover = list(getattr(plan, "must_cover", []) or [])
-    if not must_cover:
-        return 10, None  # no required angles → full score (neutral)
+    blocks = script.get("blocks") or []
+    text_full = " ".join(b.get("text", "") for b in blocks)
+    if not text_full.strip():
+        return 0, "No text"
 
-    script_text = " ".join(
-        block.get("text", "") for block in (script.get("blocks") or [])
-    ).lower()
+    score = 10
+    issues: list[str] = []
 
-    covered = 0
-    for angle in must_cover:
-        if angle.lower() in script_text:
-            covered += 1
+    text_lower = text_full.lower()
+    forbidden_hits: dict[str, int] = {}
+    for word in _FORBIDDEN_VOCAB:
+        cnt = len(re.findall(rf"\b{re.escape(word)}\b", text_lower))
+        if cnt:
+            forbidden_hits[word] = cnt
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text_full) if s.strip()]
+    flat_count = sum(
+        1 for s in sentences if any(s.lower().startswith(fs) for fs in _FLAT_STARTERS)
+    )
+    total_forbidden = sum(forbidden_hits.values()) + flat_count
+    if total_forbidden:
+        score -= min(total_forbidden * 3, 8)
+        bits = [f"{w} (x{c})" for w, c in forbidden_hits.items()]
+        if flat_count:
+            bits.append(f"flat reporting (x{flat_count})")
+        issues.append(f"essay vocab: {', '.join(bits)}")
 
-    ratio = covered / len(must_cover)
-    if ratio >= 1.0:
+    lengths = [len(s.split()) for s in sentences]
+    if len(lengths) >= 3:
+        mean = sum(lengths) / len(lengths)
+        stdev = (sum((x - mean) ** 2 for x in lengths) / len(lengths)) ** 0.5
+        if stdev < 3.0:
+            score -= 3
+            issues.append(f"uniform sentence pacing (stdev {stdev:.1f}, target >= 3)")
+
+    hype_count = sum(1 for p in _HYPE_PATTERNS if re.search(p, text_lower))
+    if hype_count == 0:
+        score -= 2
+        issues.append("no hype words (literally / absolutely / dead. forever / etc.)")
+
+    if len(lengths) >= 4:
+        run = max_run = 1
+        for i in range(1, len(lengths)):
+            if abs(lengths[i] - lengths[i - 1]) <= 2:
+                run += 1
+                max_run = max(max_run, run)
+            else:
+                run = 1
+        if max_run >= 4:
+            score -= 2
+            issues.append(f"bullet-list cadence ({max_run} consecutive same-length sentences)")
+
+    score = max(0, score)
+    if score == 10:
         return 10, None
-    if ratio >= 0.6:
-        return 5, f"Only {covered}/{len(must_cover)} required angles covered in script"
-    return 0, f"Missing required angles in script: {covered}/{len(must_cover)} covered"
+    return score, "; ".join(issues) or "natural-speech penalties"
 
 
 def run_deterministic_checks(script: dict, plan) -> tuple[int, list[str]]:
@@ -171,7 +218,7 @@ def run_deterministic_checks(script: dict, plan) -> tuple[int, list[str]]:
         check_hook_specificity(script),
         check_loop_back(script),
         check_sentence_length(script),
-        check_must_cover(script, plan),  # NEW — max 10 pts, total max now 60
+        check_natural_speech(script),  # replaces dead must_cover; max 10 pts
     ]
     total = sum(s for s, _ in checks)
     issues = [m for _, m in checks if m]
