@@ -271,6 +271,12 @@ class VideoAgent:
         if user_config and user_config.subtitle_preset:
             image_result.script["subtitle_preset"] = user_config.subtitle_preset
 
+        # Resolve TTS voice (skill > profile > builtin) and inject into script
+        if not image_result.script.get("voice"):
+            from ..tts import resolve_tts_voice
+            _skill_id = (plan.user_overrides.skill_id or plan.skill_id or "") if plan.user_overrides else (plan.skill_id or "")
+            image_result.script["voice"] = resolve_tts_voice(skill_id=_skill_id, language=plan.language)
+
         # === PHASE 6: EDITOR ===
         self.state.phase = AgentPhase.EDITOR
         from ..agent_config import load_agent_settings
@@ -337,3 +343,6 @@ def _save_artifact(run_dir: Path, filename: str, data: Any) -> None:
         logger.debug("Saved artifact: %s", path)
     except Exception as exc:
         logger.warning("Failed to save artifact %s: %s", filename, exc)
+# test
+# test
+# test

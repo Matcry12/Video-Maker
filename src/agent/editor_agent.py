@@ -138,14 +138,20 @@ def run_editor_lab(
     _emit("editor", "Lab: running TTS...", stage="lab_tts")
     from ..tts import TTSEngine
     audio_path = tmp_dir / "narration.wav"
-    voice = script.get("voice") or first_block.get("voice") or "Guy"
+    from ..tts import resolve_tts_voice
+    voice = script.get("voice") or first_block.get("voice") or resolve_tts_voice(language="en")
+    from ..agent_config import _load_profile
+    _tts_cfg = _load_profile().get("tts") or {}
+    rate = _tts_cfg.get("default_rate", "18%")
+    if not rate.startswith(("+", "-")):
+        rate = "+" + rate
     tts = TTSEngine()
     try:
         synth = tts.synthesize(
             text=narration,
             output_path=audio_path,
             voice=voice,
-            rate="+2%",
+            rate=rate,
             alignment_mode="corrected",
         )
     finally:

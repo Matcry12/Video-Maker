@@ -65,3 +65,6 @@ RAG_DETAIL.png
 
 # AI tool configs
 .codex
+
+# Kokoro ONNX models (auto-downloaded; symlinked from lab/tts/models/ in dev)
+assets/models/kokoro/

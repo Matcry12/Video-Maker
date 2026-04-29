@@ -1,8 +1,12 @@
 """
-TTS Module — Voice synthesis using Edge-TTS (Microsoft).
+TTS Module — Voice synthesis.
 
-Fast, high-quality, supports Vietnamese with word-level timing.
-No GPU required.
+Two backends, dispatched per-voice:
+  - Edge-TTS (Microsoft cloud) — Vietnamese voices and Edge-TTS English voices
+  - Kokoro-ONNX (local model)  — voices prefixed af_/am_/bf_/bm_ etc.
+
+Both return identical dict shape so downstream callers (subtitle gen,
+editor) are engine-agnostic.
 """
 
 import asyncio
@@ -15,6 +19,7 @@ import shutil
 import tempfile
 import threading
 import time
+import urllib.request
 from pathlib import Path
 from typing import Optional
 
@@ -40,7 +45,7 @@ VOICES = {
 DEFAULT_VOICE = "vi-VN-NamMinhNeural"
 DEFAULT_VOICE_BY_LANGUAGE = {
     "vi": "vi-VN-NamMinhNeural",
-    "en": "en-US-GuyNeural",
+    "en": "am_liam",  # Kokoro local; falls back to Edge-TTS en-US-GuyNeural on error
 }
 DEFAULT_RATE = "+0%"
 DEFAULT_PITCH = "+0Hz"
@@ -76,6 +81,182 @@ _SENTENCE_SPLIT_RE = re.compile(
     r'(?<!\d\.)'          # negative lookbehind: not digit-period (e.g. 2.5)
     r'\s+'                # require whitespace after punctuation
 )
+
+
+# --- Kokoro backend constants -----------------------------------------------
+# Kokoro voice IDs follow lang+gender prefix convention: af/am/bf/bm/...
+_KOKORO_VOICE_PREFIXES = (
+    "af_", "am_",  # American English (female/male)
+    "bf_", "bm_",  # British English
+    "ef_", "em_",  # Spanish
+    "ff_",         # French female
+    "hf_", "hm_",  # Hindi
+    "if_", "im_",  # Italian
+    "jf_", "jm_",  # Japanese
+    "pf_", "pm_",  # Portuguese
+    "zf_", "zm_",  # Mandarin
+)
+
+KOKORO_MODEL_DIR = Path(__file__).parent.parent / "assets" / "models" / "kokoro"
+KOKORO_MODEL_URL = (
+    "https://github.com/thewh1teagle/kokoro-onnx/releases/download/"
+    "model-files-v1.0/kokoro-v1.0.onnx"
+)
+KOKORO_VOICES_URL = (
+    "https://github.com/thewh1teagle/kokoro-onnx/releases/download/"
+    "model-files-v1.0/voices-v1.0.bin"
+)
+_kokoro_cfg = _tts_cfg.get("kokoro", {}) or {}
+KOKORO_DEFAULT_VOICE = _kokoro_cfg.get("voice", "am_liam")
+KOKORO_MAX_CHUNK_CHARS = int(_kokoro_cfg.get("max_chunk_chars", 200))
+
+
+def _is_kokoro_voice(voice: Optional[str]) -> bool:
+    """True if voice id matches Kokoro's <lang><gender>_<name> pattern."""
+    if not voice:
+        return False
+    return any(voice.startswith(p) for p in _KOKORO_VOICE_PREFIXES)
+
+
+def resolve_tts_voice(skill_id: str = "", language: str = "") -> str:
+    """Resolve TTS voice based on profile `tts.voice_mode`.
+
+    voice_mode = "auto"   (default): skill > profile > builtin
+    voice_mode = "forced": profile > builtin (skill voice ignored)
+    """
+    mode = str(_tts_cfg.get("voice_mode", "auto")).lower()
+
+    if mode != "forced" and skill_id:
+        try:
+            from .agent.skill_selector import load_skills
+            for s in load_skills():
+                if s.get("id") == skill_id:
+                    v = (s.get("tts_voice") or "").strip()
+                    if v:
+                        return v
+                    break
+        except Exception as exc:
+            logger.warning("resolve_tts_voice: skill lookup failed (%s)", exc)
+
+    lang = (language or "").lower().split("-")[0]
+    if lang == "en":
+        profile_voice = (_tts_cfg.get("kokoro", {}) or {}).get("voice", "")
+        if profile_voice:
+            return profile_voice
+
+    return DEFAULT_VOICE_BY_LANGUAGE.get(lang, DEFAULT_VOICE)
+
+
+class _KokoroBackend:
+    """Lazy-loaded Kokoro-ONNX engine. Auto-downloads model on first use.
+
+    Designed as a process-wide singleton — `_KokoroBackend.get()` returns the
+    shared instance. Loading is guarded by a lock so concurrent workers don't
+    race on first init.
+    """
+
+    _instance: "Optional[_KokoroBackend]" = None
+    _lock = threading.Lock()
+
+    @classmethod
+    def get(cls) -> "_KokoroBackend":
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = cls()
+        return cls._instance
+
+    def __init__(self):
+        KOKORO_MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        model_path = KOKORO_MODEL_DIR / "kokoro-v1.0.onnx"
+        voices_path = KOKORO_MODEL_DIR / "voices-v1.0.bin"
+        self._download_if_missing(KOKORO_MODEL_URL, model_path)
+        self._download_if_missing(KOKORO_VOICES_URL, voices_path)
+
+        # Pick execution provider — Kokoro reads ONNX_PROVIDER env var.
+        # Profile config: agent.tts.kokoro.provider in {"cuda", "cpu", "auto"}.
+        cfg_provider = str(_kokoro_cfg.get("provider", "auto")).lower()
+        try:
+            import onnxruntime as _ort
+            available = set(_ort.get_available_providers())
+        except Exception:
+            available = {"CPUExecutionProvider"}
+        if cfg_provider == "cuda" and "CUDAExecutionProvider" in available:
+            provider = "CUDAExecutionProvider"
+        elif cfg_provider == "cpu":
+            provider = "CPUExecutionProvider"
+        else:  # auto
+            provider = "CUDAExecutionProvider" if "CUDAExecutionProvider" in available else "CPUExecutionProvider"
+        os.environ["ONNX_PROVIDER"] = provider
+
+        from kokoro_onnx import Kokoro
+        logger.info("Loading Kokoro ONNX model from %s (provider=%s) ...", model_path, provider)
+        try:
+            self.kokoro = Kokoro(str(model_path), str(voices_path))
+        except Exception as exc:
+            if provider != "CPUExecutionProvider":
+                logger.warning("Kokoro %s init failed (%s); falling back to CPU", provider, exc)
+                os.environ["ONNX_PROVIDER"] = "CPUExecutionProvider"
+                self.kokoro = Kokoro(str(model_path), str(voices_path))
+                provider = "CPUExecutionProvider"
+            else:
+                raise
+        self.provider = provider
+        self._gen_lock = threading.Lock()  # Kokoro inference is not thread-safe
+        logger.info("Kokoro engine ready (provider=%s, default voice=%s).", provider, KOKORO_DEFAULT_VOICE)
+
+    @staticmethod
+    def _download_if_missing(url: str, dest: Path):
+        if dest.exists():
+            return
+        logger.info("Downloading %s (~%s) -> %s",
+                    url.rsplit("/", 1)[-1],
+                    "325MB" if url.endswith(".onnx") else "28MB",
+                    dest)
+        urllib.request.urlretrieve(url, dest)
+
+    def synthesize_to_wav(self, text: str, voice: str, output_path: Path) -> tuple[float, int]:
+        """Synthesize chunked, write to output_path, return (duration_sec, sample_rate).
+
+        Chunks text per-sentence (max KOKORO_MAX_CHUNK_CHARS chars each)
+        because Kokoro degrades on long inputs (lab-validated).
+        """
+        chunks = self._split(text)
+        all_pcm: list[np.ndarray] = []
+        sr: Optional[int] = None
+        with self._gen_lock:
+            for chunk in chunks:
+                samples, chunk_sr = self.kokoro.create(
+                    chunk, voice=voice, speed=1.0, lang="en-us",
+                )
+                if sr is None:
+                    sr = int(chunk_sr)
+                all_pcm.append(np.asarray(samples, dtype="float32"))
+        if not all_pcm or sr is None:
+            raise RuntimeError(f"Kokoro produced no audio for {len(chunks)} chunks")
+        merged = np.concatenate(all_pcm)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        sf.write(str(output_path), merged, sr)
+        return len(merged) / sr, sr
+
+    @staticmethod
+    def _split(text: str, max_chars: int = KOKORO_MAX_CHUNK_CHARS) -> list[str]:
+        sents = [s.strip() for s in _SENTENCE_SPLIT_RE.split(text) if s.strip()]
+        if not sents:
+            return [text]
+        chunks: list[str] = []
+        cur: list[str] = []
+        cur_len = 0
+        for s in sents:
+            if cur_len + len(s) + 1 > max_chars and cur:
+                chunks.append(" ".join(cur))
+                cur = [s]
+                cur_len = len(s)
+            else:
+                cur.append(s)
+                cur_len += len(s) + 1
+        if cur:
+            chunks.append(" ".join(cur))
+        return chunks or [text]
 
 
 def _sanitize_for_tts(text: str) -> str:
@@ -199,14 +380,88 @@ class TTSEngine:
         return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
     def _resolve_voice(self, voice: Optional[str]) -> str:
-        """Map short voice name to full edge-tts voice ID."""
+        """Resolve voice name to full ID. Kokoro voices pass through unchanged."""
         if not voice:
             return DEFAULT_VOICE
-        # Check if it's already a full voice ID
+        if _is_kokoro_voice(voice):
+            return voice
+        # Edge-TTS full voice ID (e.g. en-US-GuyNeural)
         if voice.endswith("Neural") and "-" in voice:
             return voice
-        # Map short name
+        # Edge-TTS short alias
         return VOICES.get(voice, DEFAULT_VOICE)
+
+    def _synthesize_kokoro(
+        self,
+        *,
+        text: str,
+        output_path: Path,
+        voice_id: str,
+    ) -> dict:
+        """Kokoro path: chunked synthesis + Whisper forced alignment.
+
+        Same return shape as the Edge-TTS path so callers don't care which
+        engine produced the audio.
+        """
+        cache_key = self._cache_key(text, voice_id, "+0%", "+0Hz", "+0%")
+        cached_audio = CACHE_DIR / f"{cache_key}.wav"
+        cached_meta = CACHE_DIR / f"{cache_key}.json"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if cached_audio.exists() and cached_meta.exists():
+            logger.info("Kokoro cache hit for '%s...'", text[:40])
+            cached = json.loads(cached_meta.read_text())
+            if cached_audio.resolve() != output_path.resolve():
+                shutil.copy2(cached_audio, output_path)
+            duration = float(cached.get("duration") or 0.0)
+            raw_words = self._coerce_words(cached.get("raw_words") or [])
+        else:
+            backend = _KokoroBackend.get()
+            t0 = time.monotonic()
+            duration, _sr = backend.synthesize_to_wav(text, voice_id, output_path)
+            logger.info(
+                "Kokoro synth: voice=%s text=%d chars audio=%.2fs gen=%.2fs",
+                voice_id, len(text), duration, time.monotonic() - t0,
+            )
+            shutil.copy2(output_path, cached_audio)
+            # Forced alignment via Whisper — only path that gives word timing
+            from .whisper_align import align_audio
+            raw_words = align_audio(output_path, text, language="en") or []
+            if not raw_words:
+                logger.warning("Whisper alignment returned no words; falling back to proportional spread")
+                raw_words = self._proportional_spread(text.split(), 0.0, duration)
+            raw_words = self._coerce_words(raw_words)
+            cached_meta.write_text(json.dumps(
+                {"duration": round(duration, 3), "raw_words": raw_words, "voice": voice_id, "engine": "kokoro"},
+                ensure_ascii=False, indent=2,
+            ))
+
+        corrected_words, timing_correction, raw_stats, corrected_stats = (
+            self._postprocess_word_timestamps(words=raw_words, duration=duration)
+        )
+        self._log_timing_stats(cache_key, corrected_stats, cache_hit=cached_audio.exists())
+        if timing_correction.get("changed_word_count"):
+            self._log_timing_correction(cache_key, timing_correction, cache_hit=False)
+
+        return {
+            "audio_path": str(output_path),
+            "duration": round(duration, 3),
+            "raw_words": raw_words,
+            "corrected_words": corrected_words,
+            "words": corrected_words,
+            "voice": voice_id,
+            "rate": "+0%",
+            "pitch": "+0Hz",
+            "volume": "+0%",
+            "timing_stats_raw": raw_stats,
+            "timing_stats_corrected": corrected_stats,
+            "timing_stats": corrected_stats,
+            "timing_correction": timing_correction,
+            "alignment_mode_requested": "forced",
+            "alignment_mode_effective": "forced",
+            "alignment_mode_fallback_reason": None,
+            "engine": "kokoro",
+        }
 
     def _normalize_percent(self, value: Optional[str], default: str, label: str) -> str:
         """
@@ -287,6 +542,24 @@ class TTSEngine:
             logger.debug("TTS sanitized text: '%s...' → '%s...'", original_text[:60], text[:60])
 
         voice_id = self._resolve_voice(voice)
+
+        # --- Dispatch: Kokoro voices route to local backend ---------------
+        # Kokoro returns no native word boundaries → forced alignment is
+        # mandatory and overrides any caller-requested alignment mode.
+        if _is_kokoro_voice(voice_id):
+            try:
+                return self._synthesize_kokoro(
+                    text=text,
+                    output_path=output_path,
+                    voice_id=voice_id,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Kokoro synthesis failed (%s); falling back to Edge-TTS en-US-GuyNeural",
+                    exc,
+                )
+                voice_id = "en-US-GuyNeural"
+
         rate_value = self._normalize_percent(rate, DEFAULT_RATE, "rate")
         pitch_value = self._normalize_pitch(pitch)
         volume_value = self._normalize_percent(volume, DEFAULT_VOLUME, "volume")

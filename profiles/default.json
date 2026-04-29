@@ -56,7 +56,14 @@
       "total_ramp_shift_limit_sec": 0.80,
       "tail_margin_sec": 0.03,
       "min_chunk_text_length": 400,
-      "max_chunk_chars": 500
+      "max_chunk_chars": 500,
+      "engine_by_language": { "en": "kokoro", "vi": "edge" },
+      "voice_mode": "auto",
+      "kokoro": {
+        "voice": "am_liam",
+        "max_chunk_chars": 200,
+        "provider": "cpu"
+      }
     },
     "editor": {
       "min_event_duration_sec": 0.35,

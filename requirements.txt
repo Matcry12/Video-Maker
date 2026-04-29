@@ -7,6 +7,10 @@ soundfile
 groq
 google-genai
 
+# Kokoro-ONNX TTS (English Shorts)
+kokoro-onnx>=0.5.0
+onnxruntime>=1.20
+
 # Whisper forced alignment
 faster-whisper
 
