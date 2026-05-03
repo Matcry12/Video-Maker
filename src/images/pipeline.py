@@ -7,6 +7,7 @@ from typing import Any
 
 from .fetch import download_image, search_images
 from .wikimedia_source import search_wikimedia_commons
+from .dedup import dedup_images
 
 logger = logging.getLogger(__name__)
 
@@ -65,21 +66,22 @@ def get_images_for_script(
                 paths = _search_and_download(topic, sources, images_per_block - len(block_images), used_urls)
                 block_images.extend([{"path": p, "keyword": ""} for p in paths])
         else:
-            # No windows — original path: topic primary, keyword fallback
-            logger.info("Block %d: searching with topic '%s'", block_idx, topic)
-            paths = _search_and_download(topic, sources, images_per_block, used_urls)
-            block_images = [{"path": p, "keyword": ""} for p in paths]
+            # No windows — keywords primary, topic fallback
+            per_kw = max(2, images_per_block // max(1, len(keywords[:3])))
+            for kw in keywords[:3]:
+                if len(block_images) >= images_per_block:
+                    break
+                kw_str = str(kw).strip()
+                if not kw_str:
+                    continue
+                logger.info("Block %d: keyword search '%s'", block_idx, kw_str)
+                extra = _search_and_download(kw_str, sources, per_kw, used_urls)
+                block_images.extend([{"path": p, "keyword": kw_str} for p in extra])
 
-            if len(block_images) < images_per_block and keywords:
-                for kw in keywords:
-                    if len(block_images) >= images_per_block:
-                        break
-                    kw_str = str(kw).strip()
-                    if not kw_str:
-                        continue
-                    logger.info("Block %d: keyword fallback search '%s'", block_idx, kw_str)
-                    extra = _search_and_download(kw_str, sources, 3, used_urls)
-                    block_images.extend([{"path": p, "keyword": kw_str} for p in extra])
+            if len(block_images) < images_per_block:
+                logger.info("Block %d: topic fallback search '%s'", block_idx, topic)
+                paths = _search_and_download(topic, sources, images_per_block - len(block_images), used_urls)
+                block_images.extend([{"path": p, "keyword": ""} for p in paths])
 
         block_images = block_images[:images_per_block]
 
@@ -105,6 +107,10 @@ def get_images_for_script(
             block_images = [{"path": p, "keyword": ""} for p in paths]
 
         if block_images:
+            paths_only = [e["path"] for e in block_images if e.get("path")]
+            deduped = dedup_images(paths_only)
+            deduped_set = set(deduped)
+            block_images = [e for e in block_images if e.get("path") in deduped_set]
             result[block_idx] = block_images
         else:
             logger.warning("Block %d: no images found after all fallbacks.", block_idx)
@@ -149,13 +155,15 @@ def _search_and_download(
 def _sources_for_topic(topic_category: str) -> list[str]:
     """Pick image sources based on topic category.
 
-    Niche topics (anime, entertainment, trending, biography): DDG only
-    Generic topics (history, science, default): DDG + Pixabay + Wikimedia
+    Niche topics (anime, entertainment, trending, biography): SearXNG only
+    (aggregates Bing + Google + DDG — best for fan art and official art)
+    Generic topics (history, science, default): SearXNG + Pixabay + Wikimedia
+    Falls back to ddg if SearXNG is unavailable (handled in fetch.py).
     """
     niche = {"anime", "entertainment", "trending", "biography", "gaming"}
     if topic_category.lower() in niche:
-        return ["ddg"]
-    return ["ddg", "pixabay", "wikimedia"]
+        return ["searxng"]
+    return ["searxng", "pixabay", "wikimedia"]
 
 
 def _build_image_query(topic: str, block_text: str) -> str:

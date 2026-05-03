@@ -153,6 +153,53 @@ def search_wikimedia(query: str, per_page: int = 10) -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
+# SearXNG (self-hosted meta search — Bing + Google + DDG aggregated)
+# ---------------------------------------------------------------------------
+
+_SEARXNG_URL = os.getenv("SEARXNG_URL", "http://localhost:8080")
+
+
+def search_searxng_images(query: str, max_results: int = 10) -> list[dict[str, Any]]:
+    """Search images via a local SearXNG instance.
+
+    Aggregates Bing, Google, and DDG images in one call.
+    Requires SEARXNG_URL env var (default: http://localhost:8080) with
+    format=json enabled in settings.yml.
+    Falls back gracefully if SearXNG is not running.
+    """
+    from urllib.parse import urlencode
+
+    params = urlencode({
+        "q": query,
+        "categories": "images",
+        "engines": "bing images,google images,duckduckgo images",
+        "format": "json",
+        "safesearch": "0",
+    })
+    url = f"{_SEARXNG_URL}/search?{params}"
+    try:
+        req = Request(url, headers={"User-Agent": "VideoMaker/1.0"})
+        with urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        logger.warning("SearXNG search failed for '%s': %s", query, exc)
+        return []
+
+    results = []
+    for hit in data.get("results", [])[:max_results]:
+        img_url = hit.get("img_src", "")
+        if not img_url:
+            continue
+        results.append({
+            "url": img_url,
+            "preview_url": hit.get("thumbnail_src", img_url),
+            "title": hit.get("title", ""),
+            "source": f"searxng:{hit.get('engine', '')}",
+        })
+    return results
+
+
+# ---------------------------------------------------------------------------
 # DuckDuckGo
 # ---------------------------------------------------------------------------
 
@@ -239,6 +286,7 @@ def search_images(
         "pixabay": lambda: search_pixabay(query, per_page=per_page),
         "wikimedia": lambda: search_wikimedia(query, per_page=per_page),
         "ddg": lambda: search_duckduckgo_images(query, max_results=per_page),
+        "searxng": lambda: search_searxng_images(query, max_results=per_page),
     }
 
     for source in sources:
