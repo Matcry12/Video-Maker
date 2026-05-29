@@ -66,5 +66,9 @@ RAG_DETAIL.png
 # AI tool configs
 .codex
 
+# YouTube OAuth credentials (never commit)
+client_secret.json
+token.json
+
 # Kokoro ONNX models (auto-downloaded; symlinked from lab/tts/models/ in dev)
 assets/models/kokoro/

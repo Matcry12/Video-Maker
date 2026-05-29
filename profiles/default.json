@@ -1,5 +1,12 @@
 {
   "profile_name": "default_shorts",
+  "youtube": {
+    "category_id": "24",
+    "default_privacy": "private",
+    "timezone": "Asia/Bangkok",
+    "schedule_time": "08:00",
+    "made_for_kids": false
+  },
   "agent": {
     "images_per_block": 30,
     "tts_parallel_chunks": 5,

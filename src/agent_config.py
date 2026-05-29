@@ -75,6 +75,15 @@ def load_agent_settings() -> dict:
     return _load_profile().get("agent") or {}
 
 
+def youtube_settings() -> dict:
+    """Return the top-level 'youtube' upload config, or {}.
+
+    Keys: category_id, default_privacy, timezone, made_for_kids.
+    Callers should `.get(key, default)` with their own fallback.
+    """
+    return _load_profile().get("youtube") or {}
+
+
 def resolve_stage(stage: str | None) -> StageModelCfg:
     """Return resolved config for a stage.
 

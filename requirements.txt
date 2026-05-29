@@ -6,6 +6,9 @@ flask
 soundfile
 groq
 google-genai
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
 
 # Kokoro-ONNX TTS (English Shorts)
 kokoro-onnx>=0.5.0
