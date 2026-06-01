@@ -58,6 +58,8 @@ def embed_texts_siglip(texts: list[str]) -> np.ndarray:
     )
     with torch.no_grad():
         feats = _siglip_model.get_text_features(**inputs)
+    if not torch.is_tensor(feats):  # transformers 5.x returns an output object
+        feats = feats.pooler_output
     feats = feats / feats.norm(dim=-1, keepdim=True)
     return feats.cpu().float().numpy()
 
@@ -72,6 +74,8 @@ def embed_images_siglip(image_paths: list[Path]) -> np.ndarray:
     inputs = _siglip_processor(images=images, return_tensors="pt")
     with torch.no_grad():
         feats = _siglip_model.get_image_features(**inputs)
+    if not torch.is_tensor(feats):  # transformers 5.x returns an output object
+        feats = feats.pooler_output
     feats = feats / feats.norm(dim=-1, keepdim=True)
     return feats.cpu().float().numpy()
 
