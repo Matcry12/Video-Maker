@@ -31,7 +31,7 @@ A free-form text prompt enters one of two pipelines and exits as a 1080×1920 ve
 
 **Video / Audio** — FFmpeg (NVENC hardware encode, libx264 CPU fallback); PIL pre-compose → rawvideo pipe; Remotion (React/TypeScript) for animated caption compositions; ASS subtitle format; mood-based BGM mixing
 
-**Retrieval / Research** — DuckDuckGo, Wikipedia, Crawl4AI; BM25 page scoring and skill-template selection (`rank-bm25`); SigLIP (`transformers` + `torch`) for perceptual clip reranking; `fastembed` for dense embeddings; Pexels Videos API for stock footage
+**Retrieval / Research** — SearXNG (self-hosted meta-search, primary) with DuckDuckGo fallback, Wikipedia, Crawl4AI; BM25 page scoring and skill-template selection (`rank-bm25`); SigLIP (`transformers` + `torch`) for perceptual clip reranking; `fastembed` for dense embeddings; Pexels Videos API for stock footage
 
 **Frontend / Render** — Remotion (`BrollShort` composition: paper background + 1080×1080 square clip + Changa One karaoke captions)
 
@@ -61,7 +61,7 @@ flowchart TD
     B --> B1
 
     subgraph Research
-        C1[DuckDuckGo + Wikipedia + Crawl4AI] --> C2[Per-page LLM extraction]
+        C1[SearXNG / DuckDuckGo + Wikipedia + Crawl4AI] --> C2[Per-page LLM extraction]
         C2 --> C3[Jaccard dedup, source-diversity cap max 2/domain]
     end
     C --> C1
