@@ -1,47 +1,77 @@
-# AI Video Generation System
+# 🎬 AI Video Generation System
 
-Turns a text prompt into a finished, rendered vertical video — narration, timed subtitles, visuals, and background music — fully automated. Two distinct pipelines: one for scraped-image anime/lore Shorts, one for stock-footage psychology Shorts rendered via Remotion.
+> Turn a text prompt into a finished, rendered vertical video — narration, word-timed subtitles, matched visuals, and background music — fully automated.
+
+![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)
+![FFmpeg](https://img.shields.io/badge/FFmpeg-NVENC-007808?logo=ffmpeg&logoColor=white)
+![Remotion](https://img.shields.io/badge/Remotion-React%2FTS-0B84F3)
+![LLM](https://img.shields.io/badge/LLM-Groq%20%2B%20Gemini-FF6F00)
+![Status](https://img.shields.io/badge/demos-2%20live-success)
+
+Two production pipelines from one codebase: **scraped-image anime/lore Shorts** and **stock-footage psychology Shorts** rendered via Remotion. Plus long-form and podcast formats. The LLM writing runs through Claude Code skills; thin Python scripts handle TTS, visuals, and compositing.
+
+---
+
+## Contents
+
+- [Demos](#demos)
+- [How it works](#how-it-works)
+- [Tech stack](#tech-stack)
+- [Pipelines](#pipelines)
+- [Engineering highlights](#engineering-highlights)
+- [Architecture](#architecture)
+- [Setup & usage](#setup--usage)
+- [Repo layout](#repo-layout)
 
 ---
 
 ## Demos
 
-Both clips play inline with audio (rendered straight from the pipelines, no edits).
+Both clips play **inline with audio** below — rendered straight from the pipelines, no manual editing.
 
-| B-roll — Psychology Facts Short | Anime — Lore/Character Short |
-|---|---|
+| 🧠 B-roll — Psychology Facts Short | 🎴 Anime — Lore / Character Short |
+|:---:|:---:|
 | <video src="https://github.com/user-attachments/assets/1e335e15-fbac-414c-ad3f-5d04244b929a" controls width="320"></video> | <video src="https://github.com/user-attachments/assets/7ae66b29-73d9-4d8c-9e4d-a700f0f796f3" controls width="320"></video> |
-| _"Why you replay arguments in your head"_ — stock-footage pipeline · ~33s | _"Light Yagami / Death Note"_ — scraped-image pipeline · ~41s |
+| _"Why you replay arguments in your head"_ | _"Light Yagami / Death Note"_ |
+| stock-footage pipeline · ~33s | scraped-image pipeline · ~41s |
 
 ---
 
-## What it does
+## How it works
 
-A free-form text prompt enters one of two pipelines and exits as a 1080×1920 vertical video with word-timed subtitles, narration, and mood-matched BGM. The **anime/lore pipeline** researches the topic via DuckDuckGo + Wikipedia + Crawl4AI, writes a narration with a style template, retrieves and timeline-sorts scraped images, then composes via PIL → rawvideo pipe → FFmpeg. The **b-roll psychology pipeline** writes a beat-segmented script, fetches portrait stock clips from Pexels, reranks them with SigLIP frame embeddings, and composes a square-clip-on-paper-background Short via Remotion (React/TypeScript). Long-form (10–15 min chapters) and podcast (16:9 Remotion) formats also exist.
+A free-form prompt enters one of two pipelines and exits as a **1080×1920** vertical video with narration, word-timed subtitles, and mood-matched BGM.
 
----
-
-## Tech Stack
-
-**Language** — Python 3.13
-
-**AI / LLM** — Groq (Llama-3.3-70B, Llama-3.1-8B-instant) + Google Gemini (Gemma-3-27B) with automatic multi-provider failover; all routing in `profiles/default.json`, zero hardcoded model names
-
-**TTS** — Kokoro-ONNX (local, English Shorts), Edge-TTS (Microsoft cloud, Vietnamese + fallback English), Chatterbox (voice cloning); parallel sentence chunking with PCM-level concat
-
-**Video / Audio** — FFmpeg (NVENC hardware encode, libx264 CPU fallback); PIL pre-compose → rawvideo pipe; Remotion (React/TypeScript) for animated caption compositions; ASS subtitle format; mood-based BGM mixing
-
-**Retrieval / Research** — SearXNG (self-hosted meta-search, primary) with DuckDuckGo fallback, Wikipedia, Crawl4AI; BM25 page scoring and skill-template selection (`rank-bm25`); SigLIP (`transformers` + `torch`) for perceptual clip reranking; `fastembed` for dense embeddings; Pexels Videos API for stock footage
-
-**Frontend / Render** — Remotion (`BrollShort` composition: paper background + 1080×1080 square clip + Changa One karaoke captions)
-
-**Orchestration** — Claude Code skills (`/broll`, `/writer`, `/long-video`) handle the LLM writing stage; thin Python render scripts under `scripts/` drive TTS + visuals + compose
+| | 🎴 Anime / Lore Short | 🧠 B-roll Psychology Short |
+|---|---|---|
+| **Example input** | `"Light Yagami / Death Note"` | `"Why you replay arguments in your head"` |
+| **Research** | SearXNG/DDG + Wikipedia + Crawl4AI | beat-segmented script |
+| **Visuals** | scraped web images, timeline-sorted | Pexels stock clips, SigLIP-reranked |
+| **Compose** | PIL → rawvideo pipe → FFmpeg | FFmpeg + Remotion (square clip on paper bg) |
+| **Captions** | ASS karaoke subtitles | Remotion animated caption cards |
+| **TTS** | Edge-TTS / Kokoro-ONNX | Kokoro-ONNX |
+| **Output** | 1080×1920 · ~40s | 1080×1920 · ~33s |
 
 ---
 
-## Pipeline / Flow
+## Tech stack
 
-### Anime / Lore Shorts
+| Area | Stack |
+|---|---|
+| **Language** | Python 3.13 |
+| **LLM** | Groq (Llama-3.3-70B, Llama-3.1-8B-instant) + Google Gemini (Gemma-3-27B); multi-provider failover, routing in `profiles/default.json`, zero hardcoded model names |
+| **Research** | SearXNG (self-hosted, primary) → DuckDuckGo fallback, Wikipedia, Crawl4AI; BM25 page scoring (`rank-bm25`) |
+| **Vision** | SigLIP perceptual frame reranking (`transformers` + `torch`); `fastembed` dense embeddings |
+| **TTS** | Kokoro-ONNX (local), Edge-TTS (cloud), Chatterbox (voice cloning); parallel chunking, PCM-level concat |
+| **Video** | FFmpeg (NVENC + libx264 fallback); PIL pre-compose → rawvideo pipe; ASS subtitles; mood-based BGM mixing |
+| **Render UI** | Remotion (React / TypeScript) — animated caption compositions |
+| **Stock media** | Pexels Videos API |
+| **Orchestration** | Claude Code skills (`/broll`, `/writer`, `/long-video`) + thin `scripts/` render entry points |
+
+---
+
+## Pipelines
+
+### 🎴 Anime / Lore Shorts
 
 ```mermaid
 flowchart TD
@@ -77,7 +107,8 @@ flowchart TD
     G --> G3
 ```
 
-### B-roll Psychology Shorts (`src/broll/`)
+<details>
+<summary><b>🧠 B-roll Psychology Shorts</b> (<code>src/broll/</code>) — click to expand</summary>
 
 ```mermaid
 flowchart LR
@@ -93,72 +124,83 @@ flowchart LR
     J --> K[Final .mp4 + YouTube metadata]
 ```
 
----
-
-## Engineering Highlights
-
-- **27.5x faster rendering** — PIL pre-compose to rawvideo pipe (14.8s) vs FFmpeg N-overlay filter chain (407s) for the anime pipeline
-- **Zero subtitle drift** — Edge-TTS word-boundary timestamps vs Whisper forced alignment (0.000s vs 43s drift on Vietnamese)
-- **PCM-level audio concat** — WAV frames concatenated at the raw PCM level, eliminating inter-chunk silence from MP3 frame alignment on both pipelines
-- **Multi-provider LLM failover** — 9 pipeline stages routed across Groq → Gemini via `profiles/default.json`; automatic retry on 429/503; no hardcoded model names anywhere in source
-- **Per-page LLM extraction** — Full page text sent to extraction LLM rather than chunked + BM25 retrieved; chunking destroyed entity co-occurrence and caused fact contamination
-- **Source diversity cap** — `max_per_source=2` prevents a comprehensive domain from monopolizing the fact pool, surfacing minority facts from smaller sources
-- **SigLIP perceptual clip rerank** — Each Pexels candidate is scored frame-by-frame against its own query string using SigLIP embeddings; best-frame offset is recorded and used as the clip start point; graceful fallback to unranked pool if torch/model unavailable
-- **Keyword-first clip ranking** — Visual query generation explicitly defines a per-topic "visual world" to prevent figurative language from producing mismatched footage ("rat race" → commuters, not a rat)
-- **Cross-beat dedup** — Running `used_ids` set across beats prevents the same Pexels clip from repeating; later beats get varied start offsets on forced reuse so frames still differ
-- **Remotion animated captions** — React/TypeScript `BrollShort` composition: sentence-split phrase chunking, auto-shrink font to fit one line, minimum card display time to prevent flash, per-word yellow highlight with dark outline; concurrency=12, no GPU required
+</details>
 
 ---
 
-## Architecture Notes
+## Engineering highlights
 
-Thin render scripts (`scripts/`) over shared `src/` modules — the scripts are entry points, not monoliths. The anime/lore pipeline follows a `research → script → quality-gate → image → editor` flow; the b-roll pipeline is orchestrated by `src/broll/builder.py`. The script-writing stage is driven by Claude Code skills (`/writer`, `/broll`, `/long-video`) — so no external LLM API key is needed to write a script when running from a skill; the optional Groq/Gemini routing in `profiles/default.json` powers the standalone research/extraction stages and never hardcodes model names. The original API-driven pipeline and Flask web UI are preserved under `archive/` for reference.
+**⚡ Performance**
+- **27.5× faster rendering** — PIL pre-compose to rawvideo pipe (14.8s) vs an FFmpeg N-overlay filter chain (407s).
+- **Zero subtitle drift** — Edge-TTS word-boundary timestamps vs Whisper forced alignment (0.000s vs 43s drift on Vietnamese).
+- **PCM-level audio concat** — WAV frames joined at raw PCM level, eliminating inter-chunk silence from MP3 frame alignment.
+
+**🔎 Research quality**
+- **Per-page LLM extraction** — full page text to the extraction LLM instead of chunk + BM25 retrieval, which destroyed entity co-occurrence and contaminated facts.
+- **Source-diversity cap** — `max_per_source=2` stops one comprehensive domain from monopolizing the fact pool, surfacing minority facts.
+- **Multi-provider failover** — 9 stages routed Groq → Gemini via `profiles/default.json`; auto-retry on 429/503; no model names hardcoded in source.
+
+**🎯 B-roll visual matching**
+- **SigLIP perceptual rerank** — each Pexels candidate scored frame-by-frame against its query; best-frame offset becomes the clip start; graceful fallback if torch/model is absent.
+- **Keyword-first ranking** — visual queries define a per-topic "visual world" so figurative language doesn't mismatch footage (`"rat race"` → commuters, not a rodent).
+- **Cross-beat dedup** — a running `used_ids` set prevents repeated clips; forced reuse gets varied start offsets so frames still differ.
+- **Remotion animated captions** — phrase chunking, auto-shrink-to-fit, minimum display time, per-word highlight; concurrency 12, no GPU required.
 
 ---
 
-## Setup
+## Architecture
+
+Thin render scripts (`scripts/`) sit over shared `src/` modules — entry points, not monoliths.
+
+- **Anime/lore** follows `research → script → quality-gate → image → editor`.
+- **B-roll** is orchestrated by `src/broll/builder.py`.
+- **Script writing** is handled by Claude Code skills (`/writer`, `/broll`, `/long-video`) — no external LLM key needed to write a script from a skill. The optional Groq/Gemini routing powers standalone research/extraction and never hardcodes model names.
+- The original API-driven pipeline and Flask web UI are preserved under `archive/` for reference.
+
+---
+
+## Setup & usage
 
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-# Remotion (b-roll pipeline only)
-cd remotion && npm install
-
-# API keys in .env at project root
-GEMINI_API_KEY=...
-GROQ_API_KEY=...
-PEXELS_API_KEY=...   # required for b-roll pipeline only
+cd remotion && npm install   # Remotion deps (b-roll / podcast only)
 ```
 
-Render a b-roll Psychology Short end-to-end:
+Add API keys to `.env` at the project root:
+
+```bash
+GEMINI_API_KEY=...
+GROQ_API_KEY=...
+PEXELS_API_KEY=...   # b-roll pipeline only
+```
+
+**Render a b-roll Psychology Short:**
 
 ```bash
 .venv/bin/python scripts/render_broll.py --topic "Why you replay arguments in your head"
 ```
 
-Render an anime/lore Short from a written script (the `/writer` Claude Code skill produces the `script.json`):
+**Render an anime/lore Short** from a written script (the `/writer` skill produces `script.json`):
 
 ```bash
 .venv/bin/python scripts/render_script.py output/runs/<run>/script.json my_short
 ```
 
-Heavy assets (BGM files, Pexels clip cache, Remotion `node_modules`, Kokoro ONNX model weights) are gitignored and fetched/installed separately. A full render uses FFmpeg on PATH; NVENC is used when an NVIDIA GPU is present, with a libx264 CPU fallback.
+> Heavy assets (BGM, Pexels clip cache, Remotion `node_modules`, Kokoro ONNX weights) are gitignored and fetched/installed separately. A full render needs FFmpeg on PATH; NVENC is used when an NVIDIA GPU is present, with a libx264 CPU fallback.
 
 ---
 
-## Repo Layout
+## Repo layout
 
 ```
-scripts/            # Render entry points (render_script.py, render_broll.py,
-                    #   render_novel.py, render_podcast.py, render_from_run.py)
+scripts/            # Render entry points (render_script, render_broll, render_novel, render_podcast …)
 src/
-  agent/            # research_agent, editor_agent, image_agent, long_editor,
-                    #   conversation_writer, rag_store, grounding
-  broll/            # B-roll pipeline: builder, keywords, clip_source,
-                    #   rerank (SigLIP), compose, remotion_render
+  agent/            # research_agent, editor_agent, image_agent, long_editor, conversation_writer, rag_store
+  broll/            # B-roll pipeline: builder, keywords, clip_source, rerank (SigLIP), compose, remotion_render
   images/           # Image fetch, SigLIP matcher, anime filter, pipeline
-  content_sources/  # Web crawl + SearXNG image source
+  content_sources/  # Web crawl + SearXNG source
   tts.py            # Edge-TTS + Kokoro-ONNX + Chatterbox backends
   editor.py         # Anime Short composer (PIL + FFmpeg)
   llm_client.py     # Groq/Gemini client with failover
@@ -166,16 +208,14 @@ src/
   thumbnail.py      # YouTube thumbnail generator
 remotion/           # React/TypeScript Remotion compositions (BrollShort, Conversation)
 skills/             # Script format + style templates (_styles/, fact_dump, novel_summary)
-prompts/            # Externalized writing briefs + LLM prompt templates
+prompts/            # Writing briefs + LLM prompt templates
 profiles/           # default.json — model routing, TTS config, render tuning
 archive/            # Legacy API-driven pipeline + Flask web UI (reference only)
-output/
-  runs/             # Per-run artifacts: plan.json, research.json, script.json
-  videos/           # Final rendered .mp4 files + thumbnails
+output/             # Per-run artifacts (runs/) and final videos (videos/)
 ```
 
 ---
 
 ## License
 
-Proprietary. Built as a portfolio project.
+Proprietary — built as a portfolio project.
