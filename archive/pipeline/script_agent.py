@@ -56,25 +56,94 @@ _BRAINROT_INJECTION = (
 )
 
 
-def _apply_brainrot_overlay(skill: dict) -> dict:
-    """Inject brainrot pacing/tone on top of any content skill's structure.
+def _build_hooks_block(hooks_data: dict, skill: dict) -> str:
+    """Compose a HOOK STRATEGIES section filtered to the skill's allowed_hooks."""
+    hooks_map = hooks_data.get("hooks", {})
+    allowed = skill.get("allowed_hooks") or list(hooks_map.keys())
+    primary = skill.get("primary_hook", "")
 
-    Reads rules from skills/brainrot.json so overlay always stays in sync
-    with the brainrot skill definition.
+    lines = ["HOOK STRATEGIES — pick ONE shape for the opening sentence."]
+    if primary:
+        lines.append(f"PRIMARY (recommended for this skill): {primary}")
+
+    universal = hooks_data.get("universal_rules", {})
+    if universal:
+        lines.append("\nUniversal hook rules (always apply):")
+        for k, v in universal.items():
+            lines.append(f"- {k}: {v}")
+
+    lines.append("\nAllowed strategies for this skill:")
+    for hook_id in allowed:
+        h = hooks_map.get(hook_id)
+        if not h:
+            continue
+        lines.append(f"\n[{hook_id}]")
+        lines.append(f"  Shape: {h.get('shape', '')}")
+        examples = h.get("examples", [])
+        if examples:
+            lines.append("  Examples:")
+            for ex in examples[:3]:
+                lines.append(f"    - {ex}")
+        if h.get("fails_when"):
+            lines.append(f"  Fails when: {h['fails_when']}")
+    return "\n".join(lines)
+
+
+def _apply_style_overlay(skill: dict, style_id: str) -> dict:
+    """Layer a delivery style + hooks library on top of any content skill.
+
+    Reads skills/_styles/<style_id>.json and COMPOSES (does not overwrite)
+    the skill's prompt_injection with the style's prompt_injection plus the
+    hooks library filtered to the skill's allowed_hooks. Skill owns CONTENT
+    shape; style owns DELIVERY cadence/voice; hooks library owns OPENING
+    rhetorical strategies.
     """
     import copy
     import json
     from pathlib import Path as _Path
-    brainrot_path = _Path(__file__).parent.parent.parent / "skills" / "brainrot.json"
-    brainrot = json.loads(brainrot_path.read_text(encoding="utf-8"))
 
+    skills_dir = _Path(__file__).parent.parent.parent / "skills"
+    style_path = skills_dir / "_styles" / f"{style_id}.json"
+    if not style_path.exists():
+        return skill  # no overlay for unknown styles
+
+    style = json.loads(style_path.read_text(encoding="utf-8"))
     skill = copy.deepcopy(skill)
+
     structure = skill.setdefault("structure", {})
-    brainrot_structure = brainrot.get("structure", {})
-    structure["tone"] = brainrot_structure.get("tone", "")
-    structure["pacing_rule"] = brainrot_structure.get("pacing_rule", "")
-    skill["prompt_injection"] = (brainrot.get("prompt_injection", "") or "").strip()
+    structure["tone"] = style.get("tone_paragraph", "") or structure.get("tone", "")
+    structural_rules = style.get("structural_rules", {})
+    structure["pacing_rule"] = (
+        structural_rules.get("breath_unit", "")
+        or structural_rules.get("punch_contrast_rule", "")
+        or structure.get("pacing_rule", "")
+    )
+
+    parts: list[str] = []
+    skill_pi = (skill.get("prompt_injection", "") or "").strip()
+    if skill_pi:
+        parts.append(skill_pi)
+    style_pi = (style.get("prompt_injection", "") or "").strip()
+    if style_pi:
+        parts.append(style_pi)
+
+    hooks_path = skills_dir / "_hooks.json"
+    if hooks_path.exists():
+        try:
+            hooks_data = json.loads(hooks_path.read_text(encoding="utf-8"))
+            hooks_block = _build_hooks_block(hooks_data, skill).strip()
+            if hooks_block:
+                parts.append(hooks_block)
+        except Exception:
+            pass  # hooks file optional — never fail the script on a hooks parse error
+
+    skill["prompt_injection"] = "\n\n---\n\n".join(parts)
     return skill
+
+
+# Back-compat alias — older callers may import _apply_brainrot_overlay
+def _apply_brainrot_overlay(skill: dict) -> dict:
+    return _apply_style_overlay(skill, "brainrot")
 
 
 def _clean_script_text(script: dict[str, Any]) -> dict[str, Any]:
@@ -168,18 +237,19 @@ def run_script(
         or plan.skill_id
         or None
     )
-    is_brainrot = plan.style == "brainrot"
+    delivery_style = plan.style or ""
+    # Style names that map to a _styles/<name>.json overlay file
+    _OVERLAY_STYLES = {"brainrot", "hype"}
 
-    if is_brainrot and forced_skill != "brainrot":
-        # Select content skill without "brainrot" in the BM25 query (it would
-        # match the standalone brainrot skill instead of the content skill)
+    if delivery_style in _OVERLAY_STYLES:
+        # Strip style from BM25 query so it matches content skill, not the style word
         _plan_no_style = plan.model_copy(update={"style": ""})
         selected_skill = select_skill(_plan_no_style, forced_skill_id=forced_skill)
-        selected_skill = _apply_brainrot_overlay(selected_skill)
+        selected_skill = _apply_style_overlay(selected_skill, delivery_style)
     else:
         selected_skill = select_skill(plan, forced_skill_id=forced_skill)
 
-    _emit("script", f"Using skill: {selected_skill.get('name', 'General')}{' [brainrot]' if is_brainrot else ''}")
+    _emit("script", f"Using skill: {selected_skill.get('name', 'General')}{' [' + delivery_style + ']' if delivery_style in _OVERLAY_STYLES else ''}")
     logger.info("Script skill: %s", selected_skill.get("skill_id", "_default"))
 
     # --- WRITE ---

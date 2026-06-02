@@ -34,7 +34,7 @@ _SEVEN_DAYS_SECS = 7 * 24 * 3600
 _CACHE_TTL_SECS = 24 * 3600
 
 _ANIME_SKILL_GUIDE = """\
-- New episode drop, trivia, surprising details → "did_you_know"
+- New episode drop, trivia, surprising details → "fact_dump"
 - "vs", power ranking, who wins → "comparison"
 - Theory, plot twist, ending explained → "theory"
 - Dark past, hidden truth, secret, buried lore → "dark_secrets"
@@ -50,7 +50,7 @@ _ANIME_SKILL_GUIDE = """\
 """
 
 _GAMING_SKILL_GUIDE = """\
-- Patch, update, trivia, surprising details → "did_you_know"
+- Patch, update, trivia, surprising details → "fact_dump"
 - Boss tier list, weapon ranking, who wins → "comparison"
 - Lore theory, story explained, plot twist → "theory"
 - Dark history, dev secrets, hidden truth, buried lore → "dark_secrets"
@@ -83,7 +83,7 @@ class TrendedTopic(BaseModel):
     trending_reason: str
     video_angle: str
     search_queries: list[str] = Field(default_factory=list)
-    skill_id: str = "did_you_know"
+    skill_id: str = "fact_dump"
     hook_idea: str = ""
     urgency_score: float = 0.4
     score: float = 0.0
@@ -260,7 +260,7 @@ def _fallback_brainstorm(title: str) -> dict:
     return {
         "video_angle": f"Top facts about {title}",
         "search_queries": [f"{title} facts", f"{title} explained", f"{title} hidden details"],
-        "skill_id": "did_you_know",
+        "skill_id": "fact_dump",
         "hook_idea": f"What you didn't know about {title}.",
         "reasoning": "fallback",
     }
@@ -272,7 +272,7 @@ def _topic_from_brainstorm(title, trending_reason, parsed, candidate):
         trending_reason=trending_reason,
         video_angle=str(parsed.get("video_angle") or title).strip(),
         search_queries=_coerce_str_list(parsed.get("search_queries")),
-        skill_id=str(parsed.get("skill_id") or "did_you_know").strip() or "did_you_know",
+        skill_id=str(parsed.get("skill_id") or "fact_dump").strip() or "fact_dump",
         hook_idea=str(parsed.get("hook_idea") or "").strip(),
         urgency_score=float(candidate.get("urgency_score") or 0.4),
         score=float(candidate.get("score") or 0.0),
@@ -286,7 +286,7 @@ def _topic_from_cached(title, trending_reason, cached, candidate):
         trending_reason=trending_reason,
         video_angle=str(cached.get("video_angle") or title).strip(),
         search_queries=_coerce_str_list(cached.get("search_queries")),
-        skill_id=str(cached.get("skill_id") or "did_you_know").strip(),
+        skill_id=str(cached.get("skill_id") or "fact_dump").strip(),
         hook_idea=str(cached.get("hook_idea") or "").strip(),
         urgency_score=float(candidate.get("urgency_score") or 0.4),
         score=float(candidate.get("score") or 0.0),
@@ -399,7 +399,7 @@ def _fallback_topic(candidate: dict[str, Any]) -> TrendedTopic:
         trending_reason=candidate.get("trending_reason") or "",
         video_angle=f"Top facts about {title}",
         search_queries=[f"{title} anime facts", f"{title} explained"],
-        skill_id="did_you_know",
+        skill_id="fact_dump",
         hook_idea="",
         urgency_score=float(candidate.get("urgency_score") or 0.4),
         score=float(candidate.get("score") or 0.0),
