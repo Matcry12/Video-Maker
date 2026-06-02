@@ -1,0 +1,132 @@
+{
+  "skill_id": "fact_dump",
+  "name": "Fact Dump",
+  "schema_version": 2,
+  "bg_video_category": "minecraft",
+  "bgm_category": "brainrot",
+  "description": "Rapid-fire list of standalone surprising facts about one subject. Each fact is its own beat — no chapters, no narrative arc, no thesis. The viewer leaves with 4-6 quotable revelations they want to repeat. Absorbs did_you_know (curiosity-trigger phrasing) and the content half of the old brainrot skill (shock-stack pacing).",
+  "trigger_keywords": [
+    "facts",
+    "fact dump",
+    "did you know",
+    "things you didn't know",
+    "interesting facts",
+    "surprising facts",
+    "insane facts",
+    "crazy facts",
+    "mind blowing facts",
+    "fun facts",
+    "facts about",
+    "nobody knows",
+    "no one talks about",
+    "bet you didn't know",
+    "shocking facts"
+  ],
+  "content_types": [
+    "facts",
+    "lore",
+    "easter_eggs",
+    "brainrot",
+    "viral",
+    "shorts"
+  ],
+  "moods": [
+    "shock",
+    "hype",
+    "energetic",
+    "funny"
+  ],
+  "default_delivery_style": "brainrot",
+  "primary_hook": "bold_claim",
+  "allowed_hooks": ["bold_claim", "beat_map"],
+  "structure": {
+    "shape": "Hook (the single most shocking fact, stated bluntly) → 4-6 standalone facts in escalating shock order, each fact = state + 1-line consequence → mini-cliffhanger transition into the next fact → callback closer that loops back to the hook OR reframes the whole subject in one line.",
+    "fact_count": "4-6 distinct facts. Below 4 the script feels thin. Above 6 the viewer can't retain anything. Each fact must be its own subject — never two sentences on the same beat.",
+    "fact_independence": "Each fact must stand alone. A viewer dropping in mid-script should still understand the current fact without the previous one. No 'this connects to', no 'building on that', no 'as we just saw'.",
+    "fact_plus_consequence": "Every fact = the fact stated bluntly + 1 line of direct consequence (what it caused, what it means in context, what happened next). Raw numbers without consequence don't stick — viewers need the 'so what' to retain the fact, but the consequence must be ONE sentence, not a paragraph. BAD (raw, doesn't stick): 'Annie was 63.' BAD (padding): 'Annie was 63 years old, and at that age most people are retired, which makes this even more impressive when you think about it.' GOOD: 'Annie was 63. A retired schoolteacher with no money and no plan B.'",
+    "ordering_rule": "Sort facts by escalating shock value, NOT chronologically. Open with the second-strongest fact (hook), bury the strongest at position 4-5 as the payoff, close with the one that reframes everything. Save the wildest for last 25%.",
+    "transition_rule": "Use rotating curiosity triggers between facts — 'But here's the part nobody tells you', 'And get this', 'Now try this one', 'But wait', 'The wildest part'. Never use the same trigger twice in one script. Triggers carry the energy; the facts themselves stay punchy.",
+    "mini_cliffhanger_rule": "Each fact's consequence line should leave a slight gap that the next fact closes — not full resolution. If fact 1 fully wraps before fact 2 starts, the viewer scrolls. Pattern: state fact → consequence line that hints there's MORE wrong here → next curiosity trigger pulls them across. 'And that wasn't even the worst part' is too on-the-nose; let the gap be implicit in the consequence itself.",
+    "callback_closer": "Last sentence either (a) loops back to a detail from the hook ('and that's why [hook detail] actually happened'), or (b) reframes the entire subject in one line ('this character was never a hero — he was a warning'). Then Gen Z closer + subscribe CTA from the delivery style file."
+  },
+  "hook_templates": {
+    "_evidence_note": "All 5 templates below have documented viral track records on TikTok/Reels (sources: virvid.ai 2026 viral hook study, usevisuals.com hook breakdowns). Use these as concrete starting shapes, not as a closed list — the underlying hook strategy (bold_claim or beat_map) is what matters.",
+    "did_you_know": {
+      "shape": "'Did you know [specific shocking fact about subject]?' — works because it loads the contradiction inside the question itself.",
+      "example": "Did you know a 63-year-old schoolteacher was the first person to survive Niagara Falls?",
+      "evidence": "22M+ views on viral example.",
+      "fails_when": "The fact is generic ('Did you know this character is interesting?') or already common knowledge."
+    },
+    "top_n": {
+      "shape": "'Top [3/5] [shocking/insane/cursed] facts about [subject]. Number [X] will end you.' — list-promise + tease one specific beat creates a completion contract.",
+      "example": "Five facts about Annie Edson Taylor. Number four will make you mad.",
+      "evidence": "6M+ views on viral example.",
+      "fails_when": "The teased beat isn't actually the wildest, or the count is fake ('a few things')."
+    },
+    "have_you_heard": {
+      "shape": "'Have you heard about [unusual specific named thing]?' — pulls FOMO. Must name a specific entity, not a category.",
+      "example": "Have you heard about the world's loneliest toilet?",
+      "evidence": "13M+ views on viral example.",
+      "fails_when": "The named thing is generic or the viewer already knows it."
+    },
+    "only_x_percent": {
+      "shape": "'Only [small %] of [audience] know [specific valuable thing about subject].' — exclusivity hook. Audience must be the viewer themselves or a group they identify with.",
+      "example": "Only 1% of JJK fans know how Toji actually killed Gojo.",
+      "fails_when": "The 'valuable thing' is just opinion or the % is obviously made up."
+    },
+    "bet_you_didnt_know": {
+      "shape": "'I bet you didn't know [specific surprising statistic / fact about subject].' — direct address, lower energy than 'Did you know' but works for niches with high trust.",
+      "example": "I bet you didn't know Annie's manager stole her barrel and toured it without her.",
+      "fails_when": "Used for facts the audience definitely already knows (insults the viewer)."
+    }
+  },
+  "research_priorities": {
+    "extraction_focus": "Surface 8-15 specific, standalone, surprising facts. Each fact = one sentence with a concrete subject + verb + number/name/consequence. Reject anything that requires multi-sentence setup to make sense.",
+    "fact_quality_filter": "A fact is GOOD if a casual fan would react 'wait, really?' on hearing it. A fact is BAD if any casual viewer of the show/franchise/topic already knows it (e.g. 'Goku is strong', 'Naruto is a ninja', 'WW2 ended in 1945'). When in doubt apply the 'devoted fan test' — if a devoted fan already knows it, drop it.",
+    "preferred_fact_types": [
+      "specific number / record / statistic that sounds impossible",
+      "a death, betrayal, loss, or dark consequence with a name attached",
+      "hidden mechanic / rule / interaction most fans don't know",
+      "behind-the-scenes production / creator decision that changed everything",
+      "unexpected origin or meaning of a thing fans take for granted",
+      "specific named character / event / item doing the surprising thing — not 'someone' or 'a fan'"
+    ],
+    "rejected_fact_types": [
+      "general background ('the show was popular')",
+      "vague evaluations ('he's one of the strongest')",
+      "marketing summaries ('the franchise broke records')",
+      "anything requiring 2+ sentences of context to land"
+    ]
+  },
+  "image_keyword_shape": {
+    "rule": "Each fact = its own image keyword. Atomic subjects only — one named entity + franchise tag.",
+    "examples_good": ["Toji JJK", "Heavenly Restriction JJK", "Annie Edson Taylor", "Niagara Falls 1901", "Furina Genshin"],
+    "examples_bad": ["Toji vs Gojo JJK", "Annie at Niagara", "Furina using ultimate", "characters comparing strength"],
+    "min_keywords": 6,
+    "max_keywords": 10,
+    "must_include_subject_per_fact": true
+  },
+  "prompt_injection": "WRITER'S POSTURE (applies before all other rules — read first):\n- Recount, don't pitch. The narrator is small; the fact is big. The fact carries the energy — you just hand it over.\n- ONE MOVE PER SENTENCE. State the fact, end the sentence. Reactions come AFTER as their own beat, never glued inside a fact sentence with em-dashes.\n- REACT AFTER, NOT DURING. No 'shockingly', 'believe it or not', 'unbelievably' inside a fact sentence. The reaction beat is separate, used on the 2-3 most shocking facts only.\n- TRUST THE VERB. Specific verbs ('killed', 'sold', 'stabbed', 'walked away') do the work. Adjectives like 'shockingly' or 'brutally' are noise — cut them.\n- RESTRAINT MAKES PUNCHES LAND. The closer line only hits because the rest was flat. Don't try to be 100% peak energy.\n\nFACT_DUMP CONTENT SHAPE — what this skill is responsible for:\n- Shape: hook fact → 4-6 standalone facts in escalating shock order → callback closer.\n- Fact independence: every sentence is its own beat. No 'this connects to', 'as we saw', 'building on that'. State the fact, move on.\n- Hook: open with the second-strongest fact stated bluntly (bold_claim) OR a list-promise that teases a specific beat (beat_map). Never start with setup, generic question, or 'In the world of'.\n- Ordering: NOT chronological. Sort by shock value. Bury the wildest at position 4-5. Last sentence loops back to the hook or reframes the whole subject in one line.\n- Transitions: rotate curiosity triggers ('But here's the part nobody tells you', 'And get this', 'The wildest part is'). Never the same trigger twice in a script.\n- Each fact must come from research. Never invent. If you run out of strong facts, stop early — short and sharp beats long and padded.\n- Reject any fact a casual fan already knows. The viewer should feel they're being told a secret.\n\nDELIVERY CADENCE — comes from the style file (default: brainrot).\n- Sentence rhythm, max words, single-word punches, banned vocab, opener rules all live in skills/_styles/<style>.json. Do NOT duplicate or override them here.\n- This skill picks WHAT to say. The style picks HOW it sounds.\n\nIMAGE KEYWORDS:\n- One atomic subject per fact. Named entity + franchise tag. Never compound subjects, never action verbs.\n- 6-10 total. If a fact has no specific subject (a number with no entity), use the franchise/topic tag.",
+  "extraction_hint": "A fact MATCHES if it is specific, surprising, and statable in one short sentence with a named subject — a number, a death, a betrayal, a hidden mechanic, a record, a behind-the-scenes decision, an unexpected origin. A fact DOES NOT MATCH if it requires 2+ sentences of setup to land, is general background any casual fan knows, or is a vague evaluation ('one of the best', 'incredibly powerful'). When in doubt, ask 'would a devoted fan already know this?' If yes, reject it.",
+  "example_hook_en": "[Subject] has a record nobody's beaten in [number] years. And the reason is dumber than you think.",
+  "example_hook_vi": "[Subject] giữ một kỷ lục không ai phá nổi trong [số] năm. Và lý do còn ngớ ngẩn hơn bạn tưởng.",
+  "quality_gate_questions": [
+    "HOOK: Does the first sentence state ONE specific shocking fact with a named subject — no setup, no generic question, no 'In the world of'?",
+    "FACT INDEPENDENCE: Can each fact be cut from the script and still make sense on its own? No 'this connects to', no 'as we just saw'?",
+    "FACT COUNT: Are there 4-6 distinct facts, each with its own subject — not two sentences on the same beat?",
+    "ORDERING: Is the wildest fact buried at position 4-5 (not first, not last), and does the closer loop back to the hook or reframe the subject?",
+    "NOVELTY: Is there at least one fact that even a devoted fan would not already know?",
+    "TRANSITIONS: Are curiosity triggers rotated (no trigger phrase used twice) and short enough that they don't drown the fact that follows?",
+    "NO PADDING: Is the script free of vague filler like 'his power grows', 'the future is uncertain', 'he changed everything forever'?"
+  ],
+  "coverage_dimensions": [
+    "the single most shocking fact stated bluntly (hook position)",
+    "a specific number, record, or stat that sounds impossible",
+    "a death, betrayal, loss, or dark consequence with a named subject",
+    "a hidden mechanic, rule, or interaction most fans don't know",
+    "a behind-the-scenes decision or unexpected origin",
+    "the reframing fact that loops back to the hook or changes how the viewer sees the whole subject"
+  ],
+  "absorbs_legacy_skills": ["did_you_know", "brainrot (content half)"],
+  "_migration_notes": "Created in SKILLS_REFACTOR step 3. Cadence/pacing rules intentionally NOT included — those belong in skills/_styles/brainrot.json (default for this skill). Until step 4 wires script_agent to compose skill+style+hook, the prompt_injection still works standalone but defers cadence to the style file. Old skills/did_you_know.json and skills/brainrot.json kept until step 8 for back-compat.\n\nKNOWN TENSION (decide before step 4 ships): real-world viral fact-shorts run 15-30s (~75 words). Our brainrot style file currently targets 75-90s / 180-220 words. Either (a) shorten brainrot style to ~75 words for fact_dump alone, (b) split brainrot into brainrot_short and brainrot_long, or (c) accept that our shorts run 60-90s and trade some completion-rate ceiling for more facts per video. Currently going with (c) by default — flag if a/b becomes the better call."
+}

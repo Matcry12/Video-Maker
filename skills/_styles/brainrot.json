@@ -1,0 +1,131 @@
+{
+  "style_id": "brainrot",
+  "name": "Brainrot",
+  "description": "Ultra-fast, ironic, semantically-drifted shorts. Self-aware that it's unhinged. Built for TikTok/Reels viewers with 2-second attention spans.",
+  "tone_paragraph": "Your hype friend texting you unhinged facts at 2am. They know it's dumb. That's the point. The voice is self-aware, ironic — 'I cannot believe I'm telling you this and yet.' Never sincere essay-bro hype. Never academic. The narrator and viewer are in on the same joke. The narrator's tone is what separates this from boring fact lists: dry deadpan delivery of absurd information, not enthusiastic teacher.",
+  "sentence_rules": {
+    "max_words": 25,
+    "avg_target_words": 11,
+    "max_clauses_per_sentence": 2,
+    "punctuation_banned": [";", ":"],
+    "punctuation_preferred": [".", ",", "—"],
+    "rhythm_rule": "The baseline is flowing breath-unit sentences (8-15 words) that a hyped friend would say in one go. Single-word punches ('Bro.', 'Twice.', 'Done.') are RARE rhythm breaks, not the baseline. A script where every sentence is 1-5 words reads like a wiki list with the bullets removed — the speaker can't build any cadence and every full stop becomes a robotic beat in TTS.",
+    "read_aloud_test": "Read the script out loud. If it sounds like you're reciting bullet points, the sentences are too uniform. If it sounds like a hyped friend telling you something at 2am — flowing setups, occasional sharp punches — ship it."
+  },
+  "vocabulary": {
+    "banned_phrases": [
+      "this connects to",
+      "the reason is",
+      "and if we trace",
+      "the reason this matters",
+      "it is worth noting",
+      "which means that",
+      "in other words",
+      "as you can see",
+      "what this tells us"
+    ],
+    "banned_essay_vocab": [
+      "Furthermore",
+      "However",
+      "Therefore",
+      "In conclusion",
+      "Moreover",
+      "causality",
+      "acausality",
+      "paradigm",
+      "nullify",
+      "fundamentally"
+    ],
+    "encouraged_punches": [
+      "Wait.",
+      "Gone.",
+      "Insane.",
+      "No.",
+      "Nothing.",
+      "Bro.",
+      "Done.",
+      "Over.",
+      "Cooked.",
+      "Crazy."
+    ],
+    "encouraged_modifiers": [
+      "literally",
+      "actually",
+      "lowkey",
+      "no cap",
+      "deadass",
+      "ngl",
+      "sheesh"
+    ],
+    "banned_narrator_scaffolding": [
+      "I genuinely need you to sit with this",
+      "I swear I'm not making this up",
+      "you're not going to believe this but",
+      "let that sink in",
+      "trust me when I say",
+      "I'm not even joking",
+      "imagine if you can",
+      "wait until you hear this",
+      "you won't believe what happens next",
+      "and I cannot stress this enough"
+    ],
+    "_scaffolding_note": "These are first-person performative insertions that pull focus from the fact to the narrator's reaction. They sound human in writing but feel try-hard in TTS. Real bar-friend transitions ('but here's the part nobody tells you', 'and get this', 'the wildest part') are still allowed BETWEEN facts — what's banned is dressing up a single fact with the narrator's emotional commentary."
+  },
+  "structural_rules": {
+    "one_fact_per_sentence": "Each sentence advances one fact, but USE COMMAS AND EM-DASHES to keep that fact in one breath. Do NOT chop a single fact into 3-4 fragments with full stops — that's the failure mode that makes scripts read as wiki bullets in TTS. Example BAD: 'He stabbed the strongest sorcerer in the back. Impossible. He walked away. To a casino. While Gojo bled.' Example GOOD: 'He stabbed the strongest sorcerer in the back and walked away to a casino while Gojo bled.'",
+    "max_punches_per_script": 3,
+    "punch_budget_rule": "HARD CAP: across the entire script, you may use at most 3 single-word or 2-word punch sentences ('Bro.', 'Twice.', 'Done.', 'Insane.'). This is a TOTAL budget, not a per-paragraph budget. Spend them on the 2-3 most shocking beats. Every additional punch beyond 3 dilutes the rest into fragmented choppiness.",
+    "single_word_punch_frequency": "Use on the 2-3 most shocking beats only. Never after every sentence — that's robotic.",
+    "punch_contrast_rule": "Single-word punches ('Bro.', 'Twice.', 'Done.', 'Insane.') only land because the surrounding sentences flow. The pattern is: 1-2 flowing setup sentences (10-15 words each, with commas or em-dashes for breath), then a sharp 1-3 word punch that breaks the rhythm. If 4+ consecutive sentences are all under 6 words, the punches dissolve into the choppy baseline and nothing hits — the whole script reads as a fragmented list, not a delivered story.",
+    "breath_unit": "A sentence is what a hyped friend can say in one breath, not one beat. Use commas and em-dashes to extend a single thought instead of fragmenting it across 4 full stops. 'He showed up to work the next morning, half-burned, trying to explain what a nuke even is' is one breath; 'He showed up to work. The next morning. Half-burned. Trying to explain what a nuke is.' is the same content destroyed into wiki bullets.",
+    "direct_address_min": 1,
+    "rephrasing_banned": "Never restate the same fact in the next 2-3 sentences. State it once, move on.",
+    "thematic_repetition_banned": "Each beat must advance the arc, not restate the previous beat with a synonym. Boredom said once. Loneliness said once. Mundane gripe said once. If two consecutive sentences land on the same emotional note (even with different words), cut one.",
+    "arc_required": "Even fact-stacks need a shape: hook (counterintuitive claim) → setup (1-2 beats of context) → contradiction (the twist that breaks the setup) → turn (the emotional or absurd consequence) → punchline (closer). A flat list of facts in random order reads as a wiki dump, not a script.",
+    "front_load_contradiction": "The contradiction beat must land by sentence 2 or 3 — not after a long setup. In brainrot the hook itself often IS the contradiction; setup comes after to retroactively justify the twist. If the script burns 5+ beats of context before the conflict hits, viewers have already scrolled. Pattern: contradiction first, explanation second.",
+    "punchline_threading": "Payoff/meme lines must be threaded through the script, not stacked at the end. Drop one sharp line in the first third to set the tone, save one for the closer to land the meaning. If every quotable line lives in the last 4 sentences, the middle is recap and the script tested badly.",
+    "binary_reveal": "When stating a rule, code, or dichotomy, use a concrete binary contrast — not an abstract principle. 'If they shoot first, it's a duel. If he shoots first, it's murder.' beats 'He has a code about honor.' Two parallel short sentences with the same shape carry rhythm and make the rule memorable; one philosophical statement reads as wiki narration.",
+    "writer_posture": "RECOUNT, DON'T PITCH. The narrator is small; the fact is big. The fact carries the energy — the writer just hands it over. Four principles:\n1. ONE MOVE PER SENTENCE. Don't stuff a fact + reaction + callback into one sentence with em-dashes. State the fact, end the sentence. Any reaction beat comes AFTER as its own sentence (or doesn't come at all).\n2. REACT AFTER, NOT DURING. The viewer needs the fact to land before you comment on it. Inside a fact sentence: no 'shockingly', 'believe it or not', 'unbelievably'. The reaction is a SEPARATE sentence, used on the 2-3 most shocking beats only. Pattern: 'He stabbed the strongest sorcerer and went to a casino. Toji won.' — the punch lands AFTER.\n3. TRUST THE VERB. Specific verbs do the emotional work — 'stabbed', 'walked away', 'sold his own son', 'eventrated'. You don't need 'shockingly stabbed' or 'brutally walked away'. If the verb is specific, the adjective is noise. Cut it.\n4. RESTRAINT MAKES PUNCHES LAND. Energy comes from contrast, not heat. If every sentence is hot, nothing pops. The closer punchline only works because the rest was restrained. Scripts that try to be 100% peak energy read as flat — peaks need valleys.\nSelf-test: read the script aloud. If you sound like you're convincing the viewer the fact is wild, you've already lost — the fact is supposed to convince them. The narrator's job is to deliver, not to oversell."
+  },
+  "voice_traits": {
+    "ironic_distance": true,
+    "sincere_hype": false,
+    "semantic_drift_allowed": true,
+    "academic_tone": false,
+    "explanation_allowed": false
+  },
+  "word_count_target": "180-220",
+  "tts_seconds_estimate": "75-90",
+  "prompt_injection": "BRAINROT DELIVERY STYLE — applies to whichever content skill is active.\n\nWRITER'S POSTURE (read first — applies before all other rules):\n- Recount, don't pitch. The narrator is small; the fact is big. The fact carries the energy — you just hand it over.\n- ONE MOVE PER SENTENCE. State the fact, end the sentence. Reactions come AFTER as their own beat, never glued inside a fact sentence with em-dashes.\n- REACT AFTER, NOT DURING. Inside a fact sentence: no 'shockingly', 'believe it or not', 'unbelievably'. The reaction is a SEPARATE sentence, used on the 2-3 most shocking beats only.\n- TRUST THE VERB. Specific verbs ('killed', 'sold', 'stabbed', 'walked away') do the work. Adjectives like 'shockingly' or 'brutally' are noise — cut them.\n- RESTRAINT MAKES PUNCHES LAND. Energy from contrast, not heat. The closer punch only hits because the rest is restrained.\n\nCADENCE — CRITICAL:\n- Baseline sentences are flowing breath-units (8-15 words) that a hyped friend would say in one breath. USE COMMAS AND EM-DASHES to chain a single thought — do NOT chop one fact into 3-4 fragments with full stops.\n- Hard cap: 25 words per sentence. Average target: ~11 words across the script.\n- Single-word punches ('Wait.', 'Insane.', 'Gone.', 'Done.') are RARE rhythm breaks. HARD CAP: maximum 3 punches across the entire script. Spend them on the 2-3 most shocking beats.\n- BAD (robotic, what fragments produce): 'He stabbed the strongest sorcerer. In the back. Impossible. He walked away. To a casino. While Gojo bled.'\n- GOOD (breath-unit baseline + sparse punch): 'He stabbed the strongest sorcerer in the back and walked away to a casino while Gojo bled. Impossible.'\n\nVOICE:\n- Tone: hype friend texting unhinged facts at 2am. Self-aware, dry, ironic. Never academic.\n- Banned essay vocab: 'Furthermore', 'However', 'Therefore', 'In conclusion', 'Moreover', 'causality', 'paradigm', 'fundamentally'.\n- Banned narrator scaffolding (first-person performative insertions): 'I genuinely need you to sit with this', 'I swear I'm not making this up', 'you're not going to believe this but', 'let that sink in', 'trust me when I say', 'wait until you hear this'.\n- Encouraged modifiers (sparingly): 'literally', 'lowkey', 'no cap', 'deadass', 'ngl', 'sheesh'.\n\nLENGTH:\n- Target 180-220 words. Not shorter, not longer.\n\nOPENER:\n- Hook max 8 words. Banned openers: 'In the world of', 'Today we're', 'Have you ever', 'Picture this', 'Imagine if', 'Hey guys', 'Welcome back', 'Let me tell you about'.\n- 'Did you know X' allowed only if X is concretely absurd.\n\nCLOSER:\n- One short reframing sentence (5 words max), optional 1-line CTA after (also <=5 words). No 'in conclusion', no 'this shows us'.",
+  "opener_rules": {
+    "hook_max_words": 8,
+    "banned_openers": [
+      "In the world of",
+      "Today we're",
+      "Have you ever",
+      "Picture this",
+      "Imagine if",
+      "Hey guys",
+      "Welcome back",
+      "Let me tell you about"
+    ],
+    "did_you_know_rule": "Allowed only if the next clause is concretely absurd. 'Did you know Furina spent 500 years scamming the heavens?' passes. 'Did you know this character is interesting?' fails."
+  },
+  "closer_rules": {
+    "structure": "One short sentence (5 words max) that reframes the whole video — the final punch. Optional 1-line CTA after, also <=5 words. No 'in conclusion', no 'this shows us'.",
+    "closer_examples": [
+      "Bro. BRO.",
+      "And it just gets worse.",
+      "Yeah. He's him.",
+      "Let that sit.",
+      "Game over. Literally."
+    ],
+    "cta_examples": [
+      "Sub. Now.",
+      "Follow or stay sleeping.",
+      "Like for more cooked lore.",
+      "Hit sub. It's free."
+    ]
+  },
+  "reference_example": "In 1901, a 63-year-old schoolteacher became the first person to survive going over Niagara Falls in a barrel. Her plan was simple — become famous, get rich, retire comfortable. She climbed out with a cut on her head and immediately gave a press conference begging women to never try it again. Then her manager stole the barrel. He took it on tour without her, kept all the money, and Annie spent the next twenty years selling autographed postcards of herself outside the falls just to eat. She died broke. In a poorhouse. The first person to beat Niagara Falls — beaten by her own marketing guy. Bro survived a waterfall and lost to a contract. Sub for more cooked history."
+}

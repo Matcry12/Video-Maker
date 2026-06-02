@@ -2,6 +2,44 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Model Routing & Token Discipline
+
+Default model is Opus 4.7, but **do not run every task on Opus**. Opus is expensive — reserve it for what actually needs it and delegate the rest to cheaper models, then review their output.
+
+- **Stay on Opus (do directly):** architecture decisions, prompt/skill design, cross-pack reasoning, debugging subtle pipeline bugs, final review of delegated work.
+- **Delegate to `sonnet`:** standard multi-file edits, refactors, test writing, focused implementation from a clear spec.
+- **Delegate to `haiku`:** mechanical lookups, grep/find sweeps, file reads, boilerplate, single-command tasks.
+- **Always review delegated output** before treating it as done — a subagent's summary describes intent, not result. Read the actual diff.
+
+Spawn via the Agent tool with `model=haiku|sonnet`, or use `oh-my-claudecode:executor` (`model=opus` only for complex work). The goal: keep Opus context lean, push grunt work down, and verify on the way back up.
+
+## Navigation Rules
+
+**Off-limits during tasks (never read, modify, import, or create files here):**
+- `archive/` — CV portfolio code only. If you need pipeline or web UI code, it does not exist for task purposes.
+- `lab/` — experiments only. Never run or wire lab code unless the user explicitly says "apply to main flow".
+
+**RAG over WebFetch (always):**
+- Research a topic: `scripts/research_crawl.py` then `scripts/research_query.py`
+- WebFetch eats 10K+ tokens/page and is never needed — the RAG cache handles it.
+
+**Task → file map (use these, nothing else):**
+| Task | Entry point |
+|---|---|
+| Render a Short | `scripts/render_script.py` |
+| Render a Psychology-Facts stock-b-roll Short | `scripts/render_broll.py` (pkg `src/broll/`, skill `/broll`) |
+| Render long-form video | `scripts/render_novel.py` |
+| Render podcast (16:9 Remotion) | `scripts/render_podcast.py` |
+| Re-render existing run | `scripts/render_from_run.py` |
+| Research a topic | `scripts/research_crawl.py` → `scripts/research_query.py` |
+| TTS synthesis | `src/tts.py` (Edge-TTS + Kokoro) or `src/tts_chatterbox.py` (voice cloning) |
+| Long-form composition | `src/agent/long_editor.py` |
+| Short composition | `src/editor.py` |
+| YouTube metadata | `scripts/yt_metadata_skeleton.py` |
+| Thumbnail | `src/thumbnail.py` |
+
+**If a task fails mid-way:** search existing files before creating new ones. The file you need almost certainly exists — check `src/`, `src/agent/`, and `scripts/` first.
+
 ## Runtime
 
 - Python: `./.venv/bin/python` — never bare `python` (not on PATH)
@@ -67,12 +105,41 @@ Key details:
 - `_stage_dedup_and_format()` uses word-level Jaccard similarity (threshold 0.5) to drop near-duplicate facts
 - `run_research()` signature: `(topic, search_queries, language, skill_id="", emit=None)`
 
-### Render pipeline
+### Render pipeline (Shorts)
 
 - TTS: `src/tts.py` — Edge-TTS with parallel chunking; PCM array concat (not FFmpeg copy) to avoid inter-chunk silence
 - Subtitles: ASS format, generated in `src/editor.py`
 - Video: PIL pre-compose → rawvideo pipe to FFmpeg (27x faster than N-overlay filter chain)
 - BGM: mood-based selection from `assets/audio/bgm/`, mixed at 0.15 volume
+
+### Long-form render pipeline (`/long-video` skill)
+
+Two scripts handle long-form (10-15 min) videos:
+
+**Full render** (TTS + subtitles + images + compose):
+```
+.venv/bin/python scripts/render_novel.py <script.json> <output_name>
+```
+
+**Re-render from existing wavs** (skips TTS, runs Whisper for subtitles):
+```
+.venv/bin/python scripts/render_from_run.py <run_dir> [output_name] [--mood <mood>]
+```
+- Both scripts auto-generate `<output_name>_thumb.jpg` and `youtube_metadata.txt`
+
+**Long-form editor** (`src/agent/long_editor.py`):
+- `compose_card()` — card-on-blurred-bg layout, contain-fit images (full image always visible, no cropping)
+- Images are contain-fit: entire image scaled to fit card, blurred copy fills any padding — never cropped
+- Karaoke word-level subtitles via ASS, chapter title overlays
+
+**Post-render outputs** (auto-generated after every render):
+- `output/videos/<name>.mp4` — final video
+- `output/videos/<name>_thumb.jpg` — 1280×720 YouTube thumbnail (`src/thumbnail.py`)
+- `output/runs/<run>/youtube_metadata.txt` — copy-paste ready title/description/chapters/hashtags/tags
+
+**Script JSON shape** (`output/runs/<name>/script.json`):
+- `chapters[]` — title, text, image_keywords, mood
+- `youtube` — title, description, chapters, hashtags, tags
 
 ### Web UI
 
@@ -100,41 +167,3 @@ Flask app in `src/web.py`. Templates in `templates/` (Jinja2). Frontend JS in `s
   - Good: "Block text = 'Heavenly Restriction made Maki unable to use cursed energy'. Current output keywords: `['Heavenly', 'Restriction', 'She']`. Expected: `['Maki Zenin', 'Heavenly Restriction', 'Jujutsu Kaisen']`."
 - Show before/after for every proposed fix so the user can judge whether it's worth doing.
 
-<!-- code-review-graph MCP tools -->
-## MCP Tools: code-review-graph
-
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
-the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file
-scanning cannot.
-
-### When to use graph tools FIRST
-
-- **Exploring code**: `semantic_search_nodes` or `query_graph` instead of Grep
-- **Understanding impact**: `get_impact_radius` instead of manually tracing imports
-- **Code review**: `detect_changes` + `get_review_context` instead of reading entire files
-- **Finding relationships**: `query_graph` with callers_of/callees_of/imports_of/tests_for
-- **Architecture questions**: `get_architecture_overview` + `list_communities`
-
-Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
-
-### Key Tools
-
-| Tool | Use when |
-|------|----------|
-| `detect_changes` | Reviewing code changes — gives risk-scored analysis |
-| `get_review_context` | Need source snippets for review — token-efficient |
-| `get_impact_radius` | Understanding blast radius of a change |
-| `get_affected_flows` | Finding which execution paths are impacted |
-| `query_graph` | Tracing callers, callees, imports, tests, dependencies |
-| `semantic_search_nodes` | Finding functions/classes by name or keyword |
-| `get_architecture_overview` | Understanding high-level codebase structure |
-| `refactor_tool` | Planning renames, finding dead code |
-
-### Workflow
-
-1. The graph auto-updates on file changes (via hooks).
-2. Use `detect_changes` for code review.
-3. Use `get_affected_flows` to understand impact.
-4. Use `query_graph` pattern="tests_for" to check coverage.

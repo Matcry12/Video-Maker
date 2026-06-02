@@ -1,0 +1,127 @@
+{
+  "_description": "Produced-content index for the b-roll pipeline. Each entry is one published/rendered Short. Check new topics against this list (topic + normalized_topic) before generating to avoid duplicate videos on the channel.",
+  "_fields": {
+    "topic": "the input topic string passed to build_broll()",
+    "normalized_topic": "lowercase, alnum-only, deduplicated key used for duplicate detection",
+    "niche": "channel niche the video belongs to",
+    "hook": "clickbait top-screen headline used",
+    "output_file": "final rendered mp4",
+    "bgm": "background music track used",
+    "date": "YYYY-MM-DD the video was produced",
+    "status": "draft | approved | published"
+  },
+  "videos": [
+    {
+      "topic": "Why your brain remembers embarrassing moments at 3AM",
+      "normalized_topic": "whyyourbrainremembersembarrassingmomentsat3am",
+      "niche": "Psychology Facts",
+      "hook": "Why Your Brain Tortures You Nightly",
+      "output_file": "why_your_brain_3am_afterhours_v2.mp4",
+      "bgm": "AFTER HOURS INSTRUMENTAL (Slowed Reverb)",
+      "date": "2026-05-31",
+      "status": "draft"
+    },
+    {
+      "topic": "Why you replay arguments in your head hours later",
+      "normalized_topic": "whyyoureplayargumentsinyourheadhourslater",
+      "niche": "Psychology Facts",
+      "hook": "The Real Reason You Replay Arguments",
+      "output_file": "/home/matcry/Documents/Video maker/output/broll/why_you_replay_arguments_in_your_head_ho_1780241707.mp4",
+      "bgm": "AFTER HOURS INSTRUMENTAL (Slowed Reverb) [HnFGQ_kOGcc].mp3",
+      "date": "2026-05-31",
+      "status": "draft",
+      "youtube": {
+        "title": "Why You Can't Stop Replaying Arguments In Your Head",
+        "description": "Ever wonder why your brain forces you to replay past arguments at 3 AM? It\u2019s not just frustration; it\u2019s a psychological phenomenon known as 'ruminating,' and your brain is actually trying to protect you by searching for a better outcome.\n\nLearn why we obsess over 'perfect comebacks' and how your brain attempts to resolve unfinished social conflicts long after the conversation has ended.\n\nFollow for more psychology facts.",
+        "tags": [
+          "psychology facts",
+          "why we ruminate",
+          "overthinking",
+          "social anxiety",
+          "brain hacks",
+          "mental health",
+          "human behavior",
+          "psychology tips",
+          "why we replay arguments",
+          "self improvement",
+          "cognitive psychology",
+          "mindset",
+          "emotional intelligence",
+          "stress relief",
+          "inner monologue",
+          "psychology shorts",
+          "mental patterns",
+          "brain science"
+        ]
+      }
+    },
+    {
+      "topic": "why time feels faster as you age",
+      "normalized_topic": "whytimefeelsfasterasyouage",
+      "niche": "Psychology Facts",
+      "hook": "Why Your Brain Is Stealing Time",
+      "output_file": "/home/matcry/Documents/Video maker/output/broll/why_time_feels_faster_as_you_age_1780323688.mp4",
+      "bgm": "AFTER HOURS INSTRUMENTAL (Slowed Reverb) [HnFGQ_kOGcc].mp3",
+      "date": "2026-06-01",
+      "status": "draft",
+      "youtube": {
+        "title": "Why Your Brain Is Stealing Time As You Age",
+        "description": "Ever wonder why childhood summers felt endless while your adult years seem to fly by in a blur? It isn't just nostalgia; it\u2019s a fascinating quirk of how your brain processes new information versus routine.\n\nWhen we are young, the world is full of novel experiences that force our brains to record every detail. As we age, our brains stop paying attention to the familiar, making time feel like it is accelerating. Learn the science behind why your perception of time is changing.\n\nFollow for more psychology facts.\n\n#psychology #timeperception #brainfacts #science #aging #mindset #mentalhealth #curiosity",
+        "tags": [
+          "psychology facts",
+          "time perception",
+          "why time flies",
+          "brain science",
+          "perception of time",
+          "aging",
+          "human brain",
+          "cognitive psychology",
+          "neuroscience",
+          "interesting facts",
+          "psychology tricks",
+          "mental processing",
+          "how the brain works",
+          "time flies when you're older",
+          "psychology shorts",
+          "mind hacks",
+          "educational content",
+          "memory formation"
+        ]
+      }
+    },
+    {
+      "topic": "why you talk to yourself inside your head",
+      "normalized_topic": "whyyoutalktoyourselfinsideyourhead",
+      "niche": "Psychology Facts",
+      "hook": "The Real Reason You Talk Silently",
+      "output_file": "/home/matcry/Documents/Video maker/output/broll/why_you_talk_to_yourself_inside_your_hea_1780328088.mp4",
+      "bgm": "AFTER HOURS INSTRUMENTAL (Slowed Reverb) [HnFGQ_kOGcc].mp3",
+      "date": "2026-06-01",
+      "status": "draft",
+      "youtube": {
+        "title": "The Real Reason You Talk Silently Inside Your Head",
+        "description": "Ever wonder why you have a constant voice narrating your thoughts? That internal monologue isn't just random chatter\u2014it's your brain's way of running complex simulations to help you process emotions and solve problems.\n\nFrom replaying awkward social interactions to planning your next move, your brain uses this internal dialogue as a tool for cognitive rehearsal. Learn why this silent narrator is actually a sign of a healthy, functioning mind.\n\nFollow for more psychology facts.",
+        "tags": [
+          "psychology facts",
+          "internal monologue",
+          "mental health",
+          "brain facts",
+          "how the brain works",
+          "inner voice",
+          "psychology shorts",
+          "human behavior",
+          "cognitive science",
+          "self reflection",
+          "thinking process",
+          "mindfulness",
+          "interesting facts",
+          "brain power",
+          "psychology tips",
+          "mental simulation",
+          "why do we think",
+          "curiosity"
+        ]
+      }
+    }
+  ]
+}

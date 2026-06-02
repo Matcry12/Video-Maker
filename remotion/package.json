@@ -1,0 +1,21 @@
+{
+  "name": "remotion-conversation",
+  "version": "1.0.0",
+  "description": "Marcus & Maya conversation video renderer",
+  "scripts": {
+    "start": "npx remotion studio",
+    "render": "npx remotion render src/index.ts ConversationVideo",
+    "build": "npx remotion render src/index.ts ConversationVideo out/video.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.291",
+    "@remotion/google-fonts": "^4.0.291",
+    "remotion": "^4.0.291",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "typescript": "^5.4.5"
+  }
+}

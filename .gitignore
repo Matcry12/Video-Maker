@@ -47,6 +47,9 @@ content_drafts/
 lab/
 plans/
 
+# Root-level planning scratch docs
+/*_PLAN.md
+
 # One-off scripts and verification docs
 bench_gemma.py
 run_pr2_smoke.py
@@ -69,6 +72,36 @@ RAG_DETAIL.png
 # YouTube OAuth credentials (never commit)
 client_secret.json
 token.json
+token_*.json
+*_token.json
 
 # Kokoro ONNX models (auto-downloaded; symlinked from lab/tts/models/ in dev)
 assets/models/kokoro/
+
+# Backups / scratch
+*.bak
+
+# Local AI tool state
+.gemini/
+graphify-out/
+
+# Generated / cached pipeline data (regenerated at runtime, not source)
+research/
+data/
+assets/cached_images/
+assets/subtitle/
+src/broll/cache/
+**/cache/
+
+# Heavy media assets — bundled separately, not in git (see README "Setup")
+assets/audio/bgm/
+assets/voices/
+assets/images/avatar/
+
+# Remotion: commit source (src/, package.json, config, static public assets)
+# but never deps, renders, or per-run generated inputs
+remotion/node_modules/
+remotion/out/
+remotion/public/*.wav
+remotion/public/broll_clips.mp4
+remotion/public/topic.jpg

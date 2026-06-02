@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, quote
+from urllib.parse import urlencode, quote, urlparse
 from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__name__)
@@ -17,6 +17,26 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 IMAGE_CACHE_DIR = PROJECT_ROOT / "tmp" / "cache" / "images"
 SEARCH_CACHE_DIR = PROJECT_ROOT / "tmp" / "cache" / "image_search"
 CACHE_TTL_SEC = 7 * 24 * 60 * 60  # 7 days
+
+
+def _cache_enabled() -> bool:
+    """Whether search/image caching is active.
+
+    Set env IMAGE_CACHE=0 (or false/no) to force fresh searches and
+    re-downloads — useful while iterating on image quality. Default: on.
+    """
+    return os.getenv("IMAGE_CACHE", "1").strip().lower() not in ("0", "false", "no", "off")
+
+# Minimal pre-download blocklist — guaranteed-garbage domains where
+# downloading anything wastes bandwidth (e-commerce listings, stock photos).
+# Content-based filtering (anime_filter.py) handles everything else after download.
+_BLOCKED_IMAGE_DOMAINS: frozenset[str] = frozenset({
+    "amazon.com", "amazon.co.jp", "ebay.com",
+    "shutterstock.com", "gettyimages.com", "istockphoto.com",
+    "cdn.jsdelivr.net", "unpkg.com",
+})
+
+_BLOCKED_URL_SUBSTRINGS: tuple[str, ...] = ()
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +179,25 @@ def search_wikimedia(query: str, per_page: int = 10) -> list[dict[str, Any]]:
 _SEARXNG_URL = os.getenv("SEARXNG_URL", "http://localhost:8080")
 
 
+def _parse_resolution(res: str) -> tuple[int, int]:
+    """Parse a SearXNG 'resolution' string like '1920×1080' into (w, h).
+
+    Returns (0, 0) when unknown/unparseable. Tolerates ×, x, X, * separators.
+    """
+    if not res:
+        return (0, 0)
+    for sep in ("×", "x", "X", "*"):
+        if sep in str(res):
+            try:
+                a, b = str(res).split(sep)[:2]
+                w = int("".join(c for c in a if c.isdigit()))
+                h = int("".join(c for c in b if c.isdigit()))
+                return (w, h)
+            except (ValueError, TypeError):
+                return (0, 0)
+    return (0, 0)
+
+
 def search_searxng_images(query: str, max_results: int = 10) -> list[dict[str, Any]]:
     """Search images via a local SearXNG instance.
 
@@ -190,11 +229,16 @@ def search_searxng_images(query: str, max_results: int = 10) -> list[dict[str, A
         img_url = hit.get("img_src", "")
         if not img_url:
             continue
+        w, h = _parse_resolution(hit.get("resolution", ""))
         results.append({
             "url": img_url,
             "preview_url": hit.get("thumbnail_src", img_url),
             "title": hit.get("title", ""),
             "source": f"searxng:{hit.get('engine', '')}",
+            "engine": hit.get("engine", ""),
+            "score": hit.get("score", 0),
+            "width": w,
+            "height": h,
         })
     return results
 
@@ -270,7 +314,7 @@ def search_images(
     cache_key = hashlib.sha256(f"{query}|{'|'.join(sources)}|{per_page}".encode()).hexdigest()
     cache_file = SEARCH_CACHE_DIR / f"{cache_key}.json"
 
-    if cache_file.exists():
+    if _cache_enabled() and cache_file.exists():
         age = time.time() - cache_file.stat().st_mtime
         if age < CACHE_TTL_SEC:
             try:
@@ -301,16 +345,25 @@ def search_images(
             items = []
         for item in items:
             url = item.get("url", "")
-            if url and url not in seen_urls:
-                seen_urls.add(url)
-                combined.append(item)
+            if not url or url in seen_urls:
+                continue
+            domain = urlparse(url).netloc.lstrip("www.")
+            if any(domain == b or domain.endswith("." + b) for b in _BLOCKED_IMAGE_DOMAINS):
+                logger.debug("Blocked image from domain %s", domain)
+                continue
+            if any(sub in url for sub in _BLOCKED_URL_SUBSTRINGS):
+                logger.debug("Blocked image by URL pattern: %s", url)
+                continue
+            seen_urls.add(url)
+            combined.append(item)
 
     # Persist to cache
-    try:
-        with open(cache_file, "w", encoding="utf-8") as f:
-            json.dump(combined, f)
-    except OSError as exc:
-        logger.debug("Could not write search cache: %s", exc)
+    if _cache_enabled():
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(combined, f)
+        except OSError as exc:
+            logger.debug("Could not write search cache: %s", exc)
 
     return combined
 
@@ -338,15 +391,16 @@ def download_image(url: str, filename_hint: str = "") -> Path | None:
     if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
         ext = ".jpg"  # default; will verify from Content-Type below
 
-    cached = IMAGE_CACHE_DIR / f"{url_hash}{ext}"
-    if cached.exists() and cached.stat().st_size > 0:
-        return cached
+    if _cache_enabled():
+        cached = IMAGE_CACHE_DIR / f"{url_hash}{ext}"
+        if cached.exists() and cached.stat().st_size > 0:
+            return cached
 
-    # Also check alternative extensions in case a prior download used a different ext
-    for alt_ext in (".jpg", ".jpeg", ".png", ".webp"):
-        alt = IMAGE_CACHE_DIR / f"{url_hash}{alt_ext}"
-        if alt.exists() and alt.stat().st_size > 0:
-            return alt
+        # Also check alternative extensions in case a prior download used a different ext
+        for alt_ext in (".jpg", ".jpeg", ".png", ".webp"):
+            alt = IMAGE_CACHE_DIR / f"{url_hash}{alt_ext}"
+            if alt.exists() and alt.stat().st_size > 0:
+                return alt
 
     try:
         req = Request(url, headers={"User-Agent": "VideoMaker/1.0"})

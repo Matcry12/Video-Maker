@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "description": "5 opening rhetorical templates. Each skill JSON declares which it allows; the script LLM picks per video. Sentence-level rules (length cap, banned openers, did-you-know rule) live in style files instead — this file owns ONLY the rhetorical strategies.",
+  "universal_rules": {
+    "specificity_required": "Every hook must contain at least one of: named entity, specific number, or concrete action. No 'this character', 'a fight', 'something crazy'.",
+    "visual_pattern_interrupt": "The hook should invite a visual punch — a name to slam on screen, a number to flash, a question mark.",
+    "breath_unit_allowed": "A hook can be ONE flowing 15-25 word sentence as long as the contradiction is loaded inside it — fragmenting it across 3-4 short sentences usually weakens the impact. 'In 1901, a 63-year-old schoolteacher became the first person to survive going over Niagara Falls in a barrel.' is one breath that contains the entire premise; chopping it into 'A schoolteacher. Sixty-three years old. Survived Niagara Falls. In a barrel.' kills the cadence. Fragment only when the punch is the point (e.g. 'Toji killed Gojo.' is short on purpose because the brevity IS the shock).",
+    "contradiction_in_hook": "The hook sentence itself must contain the contradiction, not set it up. Sentence 1 should already be the surprise. If sentence 1 is neutral fact and sentence 2 is the twist, the viewer scrolled before the twist. 'One man survived two atomic bombs' is a fact. 'One man survived two atomic bombs and died of a stomach ache' is a hook."
+  },
+  "hooks": {
+    "bold_claim": {
+      "shape": "Subject + counterintuitive consequence in one sentence. The claim must contain a causal twist or contradiction, not a superlative opinion. 'X did the impossible thing' beats 'X is the most [superlative] thing.'",
+      "examples": [
+        "Toji killed the strongest sorcerer with zero cursed energy.",
+        "Furina spent 500 years scamming the heavens.",
+        "Saitama got everything every anime hero wants and it ruined his life."
+      ],
+      "fails_when": "Superlative opinion with no contradiction ('X is the saddest/biggest/most underrated hero'), vague intensifier with no fact ('This is insane.'), or fact every fan already knows."
+    },
+    "curiosity_gap": {
+      "shape": "Name the thing, withhold the reason. Viewer stays for the why.",
+      "examples": [
+        "Ringo never lost a duel. The reason is colder than you think.",
+        "There's one technique Gojo refused to teach. Now you'll see why.",
+        "Furina has one ability nobody talks about. It's why she's banned in tournaments."
+      ],
+      "fails_when": "Withheld answer is obvious, or tease is generic ('there's a hidden reason')."
+    },
+    "beat_map": {
+      "shape": "List-promise + tease one specific beat. Creates a completion contract.",
+      "examples": [
+        "Three things about Ringo. Number two breaks JoJo's whole power system.",
+        "Five facts about Toji. The fifth one is illegal in Japan.",
+        "Four reasons Furina is the most cracked five-star. Reason three will end you."
+      ],
+      "fails_when": "The teased beat isn't actually the strongest, or the count is fake ('a few things' instead of a number)."
+    },
+    "in_medias_res": {
+      "shape": "Drop into a specific moment that already contains the contradiction. The snapshot itself must show the conflict, not set it up. 'Toji is bleeding out smiling' shows the twist in one frame; 'Ringo is on a hilltop with Johnny' is just an establishing shot. If the opening could be the wide-shot opening of a movie scene, push closer — to the frame where the conflict is already visible.",
+      "examples": [
+        "Ringo is standing in a bar. Across from him: a man who just shot his wife.",
+        "Toji is bleeding out on a rooftop, smiling.",
+        "Furina is on stage. The entire nation is watching her cry."
+      ],
+      "fails_when": "The moment needs context to make sense, sounds narrated ('Picture this:', 'Imagine if'), or is a descriptive wide shot / neutral setup action (lighting a cigarette, walking into a room, standing across from someone) instead of a tension snapshot. If the contradiction is not already visible in the opening frame, the hook is too wide."
+    },
+    "provocation": {
+      "shape": "Question or negation that flips received wisdom. Forces a reaction.",
+      "examples": [
+        "Everyone says Ringo lost on purpose. They're wrong.",
+        "Why does every JJK fan get Sukuna's domain wrong?",
+        "Furina is not a healer. She never was."
+      ],
+      "fails_when": "Strawman ('nobody talks about this' — except 50 other videos do), or rhetorical question with an obvious answer."
+    }
+  }
+}

@@ -111,6 +111,40 @@ def get_authenticated_service(
     return build("youtube", "v3", credentials=creds)
 
 
+# ── channel selection ───────────────────────────────────────────────────────
+
+
+def resolve_token_file(channel: Optional[str] = None) -> Path:
+    """Map a channel name to its cached OAuth token path.
+
+    A single Google account can own several YouTube channels (Brand Accounts);
+    each channel needs its own token (chosen on the consent screen). Channels are
+    declared in profiles/default.json -> youtube.channels as {name: token_file}.
+    Relative token paths resolve against the project root.
+
+    Falls back to the legacy single-token behaviour (token.json) when no channels
+    map is configured. Raises KeyError if `channel` is given but not declared.
+    """
+    from src.agent_config import youtube_settings
+
+    cfg = youtube_settings()
+    channels: dict = cfg.get("channels") or {}
+    name = channel or cfg.get("default_channel", "main")
+
+    if not channels:
+        return _TOKEN_FILE  # legacy: no channels configured
+
+    if name not in channels:
+        raise KeyError(
+            f"Channel {name!r} not found in profile youtube.channels "
+            f"(have: {sorted(channels)}). Add it to profiles/default.json."
+        )
+    token = Path(channels[name])
+    if not token.is_absolute():
+        token = _PROJECT_ROOT / token
+    return token
+
+
 # ── time helpers ────────────────────────────────────────────────────────────
 
 
@@ -229,6 +263,29 @@ def build_meta_from_script(script_path: Path, *, privacy: str, publish_at: Optio
     )
 
 
+def meta_from_dict(yt: dict, *, privacy: str, publish_at: Optional[str],
+                   category_id: str, made_for_kids: bool) -> VideoMeta:
+    """Build VideoMeta from an in-memory youtube dict ({title, description, tags}).
+
+    Used by pipelines (e.g. /broll) that already hold their metadata and never
+    write a script.json. Mirrors build_meta_from_script's field handling: a
+    `hashtags` list is appended to the end of the description.
+    """
+    description = str(yt.get("description") or "")
+    hashtags = yt.get("hashtags") or []
+    if hashtags:
+        description = (description + "\n\n" + " ".join(str(h) for h in hashtags)).strip()
+    return VideoMeta(
+        title=str(yt.get("title") or "Untitled"),
+        description=description,
+        tags=[str(t) for t in (yt.get("tags") or [])],
+        category_id=str(yt.get("category_id") or category_id),
+        privacy=privacy,
+        publish_at=publish_at,
+        made_for_kids=made_for_kids,
+    )
+
+
 def _find_artifacts(run_dir: Path, video: Optional[Path],
                     script: Optional[Path]) -> tuple[Path, Path, Optional[Path]]:
     """Resolve (script.json, video.mp4, thumbnail) from a run dir or explicit paths."""
@@ -264,6 +321,8 @@ def upload_run(
     schedule_next: bool = False,
     category_id: Optional[str] = None,
     thumb: Optional[Path] = None,
+    channel: Optional[str] = None,
+    meta: Optional[VideoMeta] = None,
     dry_run: bool = False,
 ) -> Optional[str]:
     """Upload a finished run to YouTube. Returns the watch URL (or None on dry-run).
@@ -271,6 +330,8 @@ def upload_run(
     Profile defaults (profiles/default.json -> "youtube") fill any unset args.
     `publish_at` is normalized to RFC3339 UTC using the configured timezone.
     `schedule_next` ignores publish_at and targets the next profile schedule_time.
+    `channel` selects which channel's token to use (see youtube.channels); the
+    first upload to a new channel opens a browser to pick it on the consent screen.
     """
     from src.agent_config import youtube_settings
 
@@ -280,40 +341,71 @@ def upload_run(
     made_for_kids = bool(cfg.get("made_for_kids", False))
     tz_name = cfg.get("timezone", "UTC")
 
-    script_path, video_path, found_thumb = _find_artifacts(
-        run_dir,
-        Path(video) if video else None,
-        Path(script) if script else None,
-    )
-    thumb_path = Path(thumb) if thumb else found_thumb
-
     if schedule_next and not publish_at:
         publish_at = next_occurrence(cfg.get("schedule_time", "08:00"), tz_name)
     elif publish_at:
         publish_at = to_rfc3339_utc(publish_at, tz_name)
 
-    meta = build_meta_from_script(
-        script_path,
-        privacy=privacy,
-        publish_at=publish_at,
-        category_id=category_id,
-        made_for_kids=made_for_kids,
-    )
+    if meta is None:
+        # Build metadata from a script.json (long-form / runs that write one).
+        script_path, video_path, found_thumb = _find_artifacts(
+            run_dir,
+            Path(video) if video else None,
+            Path(script) if script else None,
+        )
+        meta = build_meta_from_script(
+            script_path,
+            privacy=privacy,
+            publish_at=publish_at,
+            category_id=category_id,
+            made_for_kids=made_for_kids,
+        )
+    else:
+        # Caller supplied metadata (e.g. /broll holds its own youtube dict and
+        # never writes a script.json). Resolve only the video + thumbnail, and
+        # let profile/CLI privacy + scheduling win over whatever the meta carried.
+        if video is not None:
+            video_path = Path(video)
+        else:
+            mp4s = sorted(run_dir.glob("*.mp4"))
+            if not mp4s:
+                guess = _PROJECT_ROOT / "output" / "videos" / f"{run_dir.name}.mp4"
+                if guess.exists():
+                    mp4s = [guess]
+            if not mp4s:
+                raise FileNotFoundError(
+                    f"No .mp4 found in {run_dir} — pass the video path explicitly."
+                )
+            video_path = mp4s[0]
+        guess_thumb = video_path.with_name(video_path.stem + "_thumb.jpg")
+        found_thumb = guess_thumb if guess_thumb.exists() else None
+        meta.privacy = privacy
+        meta.publish_at = publish_at
+        meta.made_for_kids = made_for_kids
+        if category_id:
+            meta.category_id = category_id
+
+    thumb_path = Path(thumb) if thumb else found_thumb
+
+    token_file = resolve_token_file(channel)
 
     logger.info(
-        "Prepared upload: video=%s thumb=%s privacy=%s publish_at=%s",
+        "Prepared upload: video=%s thumb=%s privacy=%s publish_at=%s channel=%s token=%s",
         video_path, thumb_path, meta.privacy, meta.publish_at,
+        channel or cfg.get("default_channel", "main"), token_file.name,
     )
 
     if dry_run:
         print(json.dumps({
             "video": str(video_path),
             "thumbnail": str(thumb_path) if thumb_path else None,
+            "channel": channel or cfg.get("default_channel", "main"),
+            "token_file": str(token_file),
             "body": meta.to_body(),
         }, indent=2, ensure_ascii=False))
         return None
 
-    youtube = get_authenticated_service()
+    youtube = get_authenticated_service(token_file=token_file)
     video_id = upload_video(youtube, video_path, meta)
     if thumb_path:
         try:

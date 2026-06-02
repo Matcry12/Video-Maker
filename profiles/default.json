@@ -5,7 +5,16 @@
     "default_privacy": "private",
     "timezone": "Asia/Bangkok",
     "schedule_time": "08:00",
-    "made_for_kids": false
+    "made_for_kids": false,
+    "default_channel": "untold",
+    "channels": {
+      "echotales": "token_echotales.json",
+      "untold": "token_untold.json"
+    },
+    "pipeline_channels": {
+      "broll": "untold",
+      "writer": "echotales"
+    }
   },
   "agent": {
     "images_per_block": 30,
@@ -70,6 +79,12 @@
         "voice": "am_liam",
         "max_chunk_chars": 200,
         "provider": "cpu"
+      },
+      "chatterbox": {
+        "voice": "heart",
+        "exaggeration": 0.8,
+        "cfg_weight": 0.1,
+        "device": "auto"
       }
     },
     "editor": {
@@ -82,10 +97,86 @@
     },
     "lab_editor": {
       "editor_mode": "lab",
-      "words_per_block": 30,
-      "xfade_duration": 0.20,
+      "words_per_block": 15,
+      "xfade_duration": 0.40,
       "transition_directions": ["left", "up", "right", "down"],
-      "bgm_volume": 0.15
+      "bgm_volume": 0.075
+    },
+    "bg_video": {
+      "mode": "auto",
+      "category": "minecraft"
+    },
+    "long_form": {
+      "resolution": { "width": 1920, "height": 1080 },
+      "fps": 30,
+      "chapters_target": 5,
+      "words_per_chapter_min": 350,
+      "words_per_chapter_max": 450,
+      "chapter_gap_sec": 0.6,
+      "chapter_overlay_duration_sec": 2.5,
+      "ken_burns_zoom_per_sec": 0.0009,
+      "ken_burns_max_zoom": 1.18,
+      "min_image_sec": 4.0,
+      "max_image_sec": 7.0,
+      "voice": "cb:heart",
+      "bgm_volume": 0.15,
+      "default_mood": "mysterious"
+    },
+    "bgm": {
+      "mode": "auto",
+      "category": "",
+      "mood_map": {
+        "funk": "funk",
+        "cool": "funk",
+        "swagger": "funk",
+        "hype": "edm",
+        "action": "edm",
+        "epic": "epic",
+        "dark": "epic",
+        "intense": "epic",
+        "villain": "epic",
+        "tragic": "epic",
+        "emotional": "emotional",
+        "sad": "emotional",
+        "grief": "emotional",
+        "bittersweet": "emotional",
+        "upbeat": "upbeat",
+        "wholesome": "upbeat",
+        "comedy": "upbeat",
+        "brainrot": "brainrot",
+        "phonk": "brainrot",
+        "meme": "brainrot",
+        "mysterious": "mysterious",
+        "tension": "mysterious",
+        "eerie": "mysterious",
+        "suspense": "mysterious",
+        "tryhard": "tryhard",
+        "grind": "tryhard",
+        "sweaty": "tryhard",
+        "comeback": "tryhard",
+        "chill": "chill",
+        "lofi": "chill",
+        "relaxed": "chill",
+        "calm": "chill"
+      },
+      "fallback": {
+        "mysterious": ["epic", "emotional", "chill"],
+        "epic": ["tryhard", "mysterious", "edm"],
+        "funk": ["upbeat", "edm"],
+        "edm": ["tryhard", "funk"],
+        "emotional": ["chill", "mysterious"],
+        "upbeat": ["funk", "chill"],
+        "brainrot": ["edm", "funk"],
+        "tryhard": ["edm", "epic"],
+        "chill": ["emotional", "upbeat"]
+      }
+    },
+    "broll": {
+      "rerank": true,
+      "rerank_candidates": 10,
+      "rerank_frames_per_clip": 4,
+      "rerank_floor": 0.0,
+      "queries_per_beat": 5
     },
     "trending": {
       "cache_ttl_secs": 86400,
@@ -131,7 +222,7 @@
     "height": 1920
   },
   "fps": 30,
-  "default_voice": "NamMinh",
+  "default_voice": "cb:heart",
   "default_background": "assets/videos/",
   "global_audio": {
     "bgm_folder": "assets/audio/bgm/",

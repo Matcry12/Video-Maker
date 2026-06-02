@@ -37,6 +37,12 @@ def main() -> int:
                    help="Privacy status (default from profile).")
     p.add_argument("--category", help="YouTube category ID (default from profile).")
     p.add_argument("--thumb", help="Override thumbnail path.")
+    p.add_argument("--title", help="Upload an mp4 with this title and skip the "
+                                   "script.json lookup (handy for quick test uploads).")
+    p.add_argument("--description", default="", help="Description when using --title.")
+    p.add_argument("--channel", help="Channel name from profile youtube.channels "
+                                     "(default: youtube.default_channel). First use "
+                                     "of a new channel opens a browser to pick it.")
     p.add_argument("--dry-run", action="store_true",
                    help="Print the request body without uploading.")
     args = p.parse_args()
@@ -51,6 +57,16 @@ def main() -> int:
         run_dir = target
         video = None
 
+    # --title => build metadata inline, no script.json required.
+    meta = None
+    if args.title:
+        from src.youtube_upload import meta_from_dict
+        meta = meta_from_dict(
+            {"title": args.title, "description": args.description, "tags": []},
+            privacy=args.privacy or "private", publish_at=None,
+            category_id=args.category or "24", made_for_kids=False,
+        )
+
     url = upload_run(
         run_dir,
         video=video,
@@ -60,6 +76,8 @@ def main() -> int:
         schedule_next=args.schedule_next,
         category_id=args.category,
         thumb=Path(args.thumb) if args.thumb else None,
+        channel=args.channel,
+        meta=meta,
         dry_run=args.dry_run,
     )
     if url:

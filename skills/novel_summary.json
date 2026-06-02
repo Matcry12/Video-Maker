@@ -1,0 +1,46 @@
+{
+  "skill_id": "novel_summary",
+  "name": "Long-form Novel Summary",
+  "description": "Audiobook-style 10-15 minute narration of a light novel arc, anime arc, or long-form story. Multi-chapter structure with chapter titles, vivid scene-setting prose, and a strong narrator voice.",
+  "trigger_keywords": [
+    "long video",
+    "long-form",
+    "novel summary",
+    "arc summary",
+    "light novel",
+    "audiobook"
+  ],
+  "content_types": ["light_novel", "anime_arc", "manga_arc"],
+  "moods": ["tense", "hopeful", "somber", "mysterious", "hype"],
+  "structure": {
+    "hook_rule": "Open the first chapter with a single concrete image or moment from the story — the kind of line that would open chapter one of the actual book. No 'In the world of', no 'Today we're talking about'. Drop the listener into the scene.",
+    "pacing_rule": "Each chapter is 350-450 words of flowing narrator prose, not bullet points. Mix sentence lengths. Long descriptive sentences for setup, short sentences for impact moments. Read aloud — it must sound like an audiobook, not a wiki summary.",
+    "ending_rule": "The final chapter must land an emotional beat — a question, a quiet image, or the protagonist's last visible decision. Do not summarize the whole video at the end. Trust the listener to remember what they heard.",
+    "tone": "Confident audiobook narrator. Never wink at the camera. Never break the spell with 'and that's the lore, bestie' or any short-form CTA. This is a sit-down listen.",
+    "transitions_en": [
+      "What he did not yet realize was...",
+      "By the time the smoke cleared...",
+      "Hours earlier, in the same city...",
+      "And that should have been the end of it. It wasn't."
+    ],
+    "transitions_vi": []
+  },
+  "prompt_injection": "You are writing a 10-15 minute audiobook-style narration. Output a JSON object with a `chapters` array. Each chapter has `title` (5-9 words, evocative — never 'Chapter 1'), `text` (350-450 words of flowing prose, no bullet points, no markdown, no emoji), `image_keywords` (6-10 atomic keywords — ONE subject + franchise tag each, never compound), and `mood` (one of: tense, hopeful, somber, mysterious, hype). Target 5 chapters totaling 1700-2500 words. CHAPTER STRUCTURE: c1 hook + setup, c2-c3 escalation, c4 turning point or revelation, c5 aftermath + closing image. PROSE RULES: no robot-list sentences, no essay vocab (causality, paradigm, furthermore, however, therefore, in conclusion). Read each chapter out loud before saving — if it sounds like a textbook, rewrite. SOURCE POLICY: if a --source file is provided, paraphrase liberally; no verbatim runs longer than 40 words. NEVER include paralinguistic tags like [laughs] or [sigh] — the TTS does not support them.",
+  "extraction_hint": "A fact MATCHES if it advances the story arc — character motivation, key scene, turning point, named place, named technique, or emotional beat that a narrator would dwell on. Reject bullet-point trivia, episode counts, and meta production facts.",
+  "example_hook_en": "The rain in Lugnica had not stopped for three days when the boy with no past walked out of the alley.",
+  "example_hook_vi": "",
+  "quality_gate_questions": [
+    "OPENING: Does chapter 1 drop the listener into a concrete scene, image, or moment — not a topic announcement?",
+    "PROSE: Does each chapter read like an audiobook narrator would speak it, with mixed sentence lengths and no bullet-list cadence?",
+    "STAKES: Is there a clear escalation across chapters — something the listener wants to find out the answer to?",
+    "ENDING: Does the final chapter land an emotional image or unresolved question, without recapping or pitching a CTA?",
+    "PARALINGUISTIC: Are there zero stage directions like [laughs], [sighs], [gasps], asterisk actions, or markdown formatting?"
+  ],
+  "coverage_dimensions": [
+    "protagonist motivation and arc",
+    "central conflict or mystery",
+    "key supporting characters",
+    "named places and named techniques/abilities",
+    "emotional turning points"
+  ]
+}

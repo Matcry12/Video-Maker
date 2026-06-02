@@ -5,6 +5,14 @@ REQUIRED ANGLES TO COVER: {must_cover}
 
 {skill_prompt_injection}
 
+BEFORE WRITING — THREE MANDATORY STEPS:
+1) Pick the sharpest single angle from the research. One sentence that captures it.
+2) Scan ALL story packs for facts that support that angle — even if they come from a different pack. Pull every load-bearing detail that makes the chosen angle land harder: the cause behind the action, the condition that was negotiated, the thing the character said or did deliberately. A fact that lives in Pack B can be the thing that makes Pack C's reveal hit. Use it.
+3) Rank your facts before writing. Two tiers:
+   - LOAD-BEARING: facts that explain WHY something happened, what was deliberately done, what was said, what condition was set. These are non-negotiable — if they are cut, the story loses its meaning.
+   - VIVID: facts that describe how something looked or felt. These serve the story but can be compressed or cut if the word budget is tight.
+   If you run out of words, cut vivid details. Never cut load-bearing facts.
+
 UNIVERSAL RULES (always apply regardless of style):
 1) Write ONE SINGLE continuous block of narration. Do NOT split into multiple blocks.
 2) Do not repeat the same number more than twice.

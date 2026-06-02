@@ -1,15 +1,46 @@
 """End-to-end image pipeline: search, download, match to script blocks."""
 
 import logging
+import random
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from .fetch import download_image, search_images
 from .wikimedia_source import search_wikimedia_commons
 from .dedup import dedup_images
+from .anime_filter import is_anime_image
 
 logger = logging.getLogger(__name__)
+
+# Selection quality gates (applied to search candidates before download).
+# Domains/engines that consistently yield icon crops, fan edits, or junk.
+_BAD_SOURCE_SUBSTRINGS: tuple[str, ...] = (
+    "pinimg", "pinterest", "fbcdn", "instagram", "lookaside",
+)
+_BAD_ENGINE_SUBSTRINGS: tuple[str, ...] = ("artic",)
+_MIN_IMAGE_DIM = 500   # drop anything whose shorter side is under this (when known)
+_ICON_MAX_DIM = 800    # square images under this are treated as pfp/icon crops
+
+
+def _passes_quality(candidate: dict[str, Any]) -> bool:
+    """Metadata-only pre-download gate: drop junk engines, bad sources,
+    tiny images, and square icon/pfp crops. Unknown fields never reject."""
+    engine = str(candidate.get("engine") or candidate.get("source") or "")
+    if any(b in engine for b in _BAD_ENGINE_SUBSTRINGS):
+        return False
+    dom = urlparse(candidate.get("url", "")).netloc.replace("www.", "")
+    if any(b in dom for b in _BAD_SOURCE_SUBSTRINGS):
+        return False
+    w = int(candidate.get("width", 0) or 0)
+    h = int(candidate.get("height", 0) or 0)
+    if w and h:
+        if min(w, h) < _MIN_IMAGE_DIM:
+            return False
+        if w == h and min(w, h) < _ICON_MAX_DIM:
+            return False
+    return True
 
 
 def get_images_for_script(
@@ -35,6 +66,8 @@ def get_images_for_script(
 
     # Pick sources based on topic category
     sources = _sources_for_topic(topic_category)
+    # Content-based anime filter for niche/illustration topics
+    filter_anime = topic_category in {"anime", "entertainment", "trending"}
 
     result: dict[int, list[dict]] = {}
     used_urls: set[str] = set()  # Track URLs across blocks to prevent duplicates
@@ -57,30 +90,30 @@ def get_images_for_script(
                     if not kw_str:
                         continue
                     logger.info("Block %d window: keyword search '%s'", block_idx, kw_str)
-                    extra = _search_and_download(kw_str, sources, per_window, used_urls)
+                    extra = _search_and_download(kw_str, sources, per_window, used_urls, filter_anime=filter_anime)
                     block_images.extend([{"path": p, "keyword": kw_str} for p in extra])
 
             # Fallback: topic search when windows don't fill the quota
             if len(block_images) < images_per_block:
                 logger.info("Block %d: topic fallback search '%s'", block_idx, topic)
-                paths = _search_and_download(topic, sources, images_per_block - len(block_images), used_urls)
+                paths = _search_and_download(topic, sources, images_per_block - len(block_images), used_urls, filter_anime=filter_anime)
                 block_images.extend([{"path": p, "keyword": ""} for p in paths])
         else:
-            # No windows — keywords primary, topic fallback
-            per_kw = max(2, images_per_block // max(1, len(keywords[:3])))
-            for kw in keywords[:3]:
+            # No windows — search every keyword (not just top 3) for visual variety
+            per_kw = max(2, images_per_block // max(1, len(keywords)))
+            for kw in keywords:
                 if len(block_images) >= images_per_block:
                     break
                 kw_str = str(kw).strip()
                 if not kw_str:
                     continue
                 logger.info("Block %d: keyword search '%s'", block_idx, kw_str)
-                extra = _search_and_download(kw_str, sources, per_kw, used_urls)
+                extra = _search_and_download(kw_str, sources, per_kw, used_urls, filter_anime=filter_anime)
                 block_images.extend([{"path": p, "keyword": kw_str} for p in extra])
 
             if len(block_images) < images_per_block:
                 logger.info("Block %d: topic fallback search '%s'", block_idx, topic)
-                paths = _search_and_download(topic, sources, images_per_block - len(block_images), used_urls)
+                paths = _search_and_download(topic, sources, images_per_block - len(block_images), used_urls, filter_anime=filter_anime)
                 block_images.extend([{"path": p, "keyword": ""} for p in paths])
 
         block_images = block_images[:images_per_block]
@@ -97,13 +130,14 @@ def get_images_for_script(
         # Fallback 3: try DDG specifically if not already using it alone
         if not block_images and sources != ["ddg"]:
             logger.info("Block %d: retrying with DDG-only for '%s'", block_idx, topic)
-            paths = _search_and_download(topic, ["ddg"], images_per_block, used_urls)
+            paths = _search_and_download(topic, ["ddg"], images_per_block, used_urls, filter_anime=filter_anime)
             block_images = [{"path": p, "keyword": ""} for p in paths]
 
-        # Fallback 3: retry without URL dedup — better to reuse images than have gaps
+        # Fallback 3: retry without URL dedup or quality gate — better to
+        # reuse/accept any image than to leave the block with no visuals.
         if not block_images:
-            logger.info("Block %d: retrying without dedup (accepting reused images)", block_idx)
-            paths = _search_and_download(topic, sources, images_per_block, set())
+            logger.info("Block %d: retrying without dedup/quality gate (accepting reused images)", block_idx)
+            paths = _search_and_download(topic, sources, images_per_block, set(), filter_anime=filter_anime, quality_filter=False)
             block_images = [{"path": p, "keyword": ""} for p in paths]
 
         if block_images:
@@ -126,15 +160,39 @@ def _search_and_download(
     sources: list[str],
     max_images: int,
     used_urls: set[str],
+    filter_anime: bool = False,
+    quality_filter: bool = True,
 ) -> list[Path]:
-    """Search for images and download them, skipping already-used URLs."""
+    """Search for images and download them, skipping already-used URLs.
+
+    Selection is RANDOM, not relevance-ranked: candidates passing the
+    metadata quality gate (resolution floor, no junk engines/sources, no
+    icon crops) are shuffled, then downloaded until ``max_images`` is met.
+    This yields variety across renders while excluding low-quality images.
+
+    If ``filter_anime`` is True, downloaded images that fail the anime/real
+    classifier are dropped. Over-fetches candidates to absorb drops. Set
+    ``quality_filter=False`` for last-resort fallbacks where any image beats
+    a gap.
+    """
+    per_page = max_images * 3 + 5 if filter_anime else max_images + 5
     try:
-        candidates = search_images(query, sources=sources, per_page=max_images + 5)
+        candidates = search_images(query, sources=sources, per_page=per_page)
     except Exception as exc:
         logger.warning("Image search failed for query '%s': %s", query, exc)
         return []
 
+    if quality_filter:
+        before = len(candidates)
+        candidates = [c for c in candidates if _passes_quality(c)]
+        if before != len(candidates):
+            logger.info("quality gate: query '%s' kept %d/%d candidates", query, len(candidates), before)
+
+    # Random selection (not top-ranked) for variety across renders.
+    random.shuffle(candidates)
+
     paths: list[Path] = []
+    dropped = 0
     for candidate in candidates:
         if len(paths) >= max_images:
             break
@@ -146,9 +204,15 @@ def _search_and_download(
         except Exception:
             path = None
         if path and path.exists():
+            if filter_anime and not is_anime_image(path):
+                dropped += 1
+                used_urls.add(url)
+                continue
             paths.append(path)
             used_urls.add(url)
 
+    if filter_anime and dropped:
+        logger.info("anime_filter: query '%s' dropped %d non-anime images, kept %d", query, dropped, len(paths))
     return paths
 
 

@@ -118,6 +118,11 @@ def _is_kokoro_voice(voice: Optional[str]) -> bool:
     return any(voice.startswith(p) for p in _KOKORO_VOICE_PREFIXES)
 
 
+def _is_chatterbox_voice(voice: Optional[str]) -> bool:
+    """True if voice id is in the cb: namespace (e.g. 'cb:heart')."""
+    return bool(voice) and voice.startswith("cb:")
+
+
 def resolve_tts_voice(skill_id: str = "", language: str = "") -> str:
     """Resolve TTS voice based on profile `tts.voice_mode`.
 
@@ -130,7 +135,7 @@ def resolve_tts_voice(skill_id: str = "", language: str = "") -> str:
         try:
             from .agent.skill_selector import load_skills
             for s in load_skills():
-                if s.get("id") == skill_id:
+                if s.get("skill_id") == skill_id:
                     v = (s.get("tts_voice") or "").strip()
                     if v:
                         return v
@@ -145,6 +150,88 @@ def resolve_tts_voice(skill_id: str = "", language: str = "") -> str:
             return profile_voice
 
     return DEFAULT_VOICE_BY_LANGUAGE.get(lang, DEFAULT_VOICE)
+
+
+def resolve_bg_video_category(skill_id: str = "") -> str:
+    """Resolve background-video category folder name.
+
+    mode = "auto"   (default): skill.bg_video_category > profile > "minecraft"
+    mode = "forced": profile only (skill ignored)
+    """
+    cfg = (load_agent_settings().get("bg_video") or {})
+    mode = str(cfg.get("mode", "auto")).lower()
+    if mode != "forced" and skill_id:
+        try:
+            from .agent.skill_selector import load_skills
+            for s in load_skills():
+                if s.get("skill_id") == skill_id:
+                    cat = (s.get("bg_video_category") or "").strip()
+                    if cat:
+                        return cat
+                    break
+        except Exception as exc:
+            logger.warning("resolve_bg_video_category: skill lookup failed (%s)", exc)
+    return str(cfg.get("category", "minecraft") or "minecraft")
+
+
+def resolve_bgm_category(skill_id: str = "", mood: str = "") -> str:
+    """Resolve BGM category folder name. Empty string means flat-dir fallback.
+
+    Priority: mood (via bgm.mood_map) > skill.bgm_category > profile > "".
+    mode = "auto"   (default): as above
+    mode = "forced": profile only (skill ignored); mood still wins if mapped
+    """
+    cfg = (load_agent_settings().get("bgm") or {})
+    mode = str(cfg.get("mode", "auto")).lower()
+    if mood:
+        mood_map = cfg.get("mood_map") or {}
+        folder = str(mood_map.get(mood.strip().lower(), "") or "").strip()
+        if folder:
+            return folder
+    if mode != "forced" and skill_id:
+        try:
+            from .agent.skill_selector import load_skills
+            for s in load_skills():
+                if s.get("skill_id") == skill_id:
+                    cat = (s.get("bgm_category") or "").strip()
+                    if cat:
+                        return cat
+                    break
+        except Exception as exc:
+            logger.warning("resolve_bgm_category: skill lookup failed (%s)", exc)
+    return str(cfg.get("category", "") or "")
+
+
+def _bgm_folder_has_audio(bgm_root: Path, folder: str) -> bool:
+    if not folder:
+        return False
+    sub = bgm_root / folder
+    if not sub.is_dir():
+        return False
+    return any(p.suffix.lower() in (".mp3", ".wav") for p in sub.iterdir() if p.is_file())
+
+
+def resolve_bgm_folder(skill_id: str = "", mood: str = "", bgm_root: "Optional[Path]" = None) -> str:
+    """Resolve the BGM folder to actually use, walking the fallback chain.
+
+    Returns the first folder in [primary, *bgm.fallback[primary]] that contains
+    real audio. If none do, returns "" (flat-dir Greenery fallback). This keeps
+    an empty mood folder from silently dropping to the generic flat track —
+    it picks a semantically related mood instead.
+    """
+    primary = resolve_bgm_category(skill_id, mood)
+    if bgm_root is None:
+        from .agent_config import PROJECT_ROOT  # type: ignore
+        bgm_root = Path(PROJECT_ROOT) / "assets" / "audio" / "bgm"
+    if _bgm_folder_has_audio(bgm_root, primary):
+        return primary
+    cfg = (load_agent_settings().get("bgm") or {})
+    chain = (cfg.get("fallback") or {}).get(primary, [])
+    for cand in chain:
+        if _bgm_folder_has_audio(bgm_root, str(cand)):
+            logger.info("BGM: %r empty, falling back to related mood %r", primary, cand)
+            return str(cand)
+    return ""
 
 
 class _KokoroBackend:
@@ -380,10 +467,10 @@ class TTSEngine:
         return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
     def _resolve_voice(self, voice: Optional[str]) -> str:
-        """Resolve voice name to full ID. Kokoro voices pass through unchanged."""
+        """Resolve voice name to full ID. Kokoro/Chatterbox voices pass through unchanged."""
         if not voice:
             return DEFAULT_VOICE
-        if _is_kokoro_voice(voice):
+        if _is_chatterbox_voice(voice) or _is_kokoro_voice(voice):
             return voice
         # Edge-TTS full voice ID (e.g. en-US-GuyNeural)
         if voice.endswith("Neural") and "-" in voice:
@@ -461,6 +548,83 @@ class TTSEngine:
             "alignment_mode_effective": "forced",
             "alignment_mode_fallback_reason": None,
             "engine": "kokoro",
+        }
+
+    def _synthesize_chatterbox(
+        self,
+        *,
+        text: str,
+        output_path: Path,
+        voice_id: str,
+    ) -> dict:
+        """Chatterbox path: voice-cloned narration + Whisper forced alignment.
+
+        Same return shape as Edge-TTS / Kokoro paths.
+        """
+        from . import tts_chatterbox as tcb
+
+        cache_key = self._cache_key(text, voice_id, "+0%", "+0Hz", "+0%")
+        cached_audio = CACHE_DIR / f"{cache_key}.wav"
+        cached_meta = CACHE_DIR / f"{cache_key}.json"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if cached_audio.exists() and cached_meta.exists():
+            logger.info("Chatterbox cache hit for '%s...'", text[:40])
+            cached = json.loads(cached_meta.read_text())
+            if cached_audio.resolve() != output_path.resolve():
+                shutil.copy2(cached_audio, output_path)
+            duration = float(cached.get("duration") or 0.0)
+            raw_words = self._coerce_words(cached.get("raw_words") or [])
+        else:
+            voice_short = tcb.strip_prefix(voice_id)
+            backend = tcb._ChatterboxBackend.get()
+            t0 = time.monotonic()
+            duration, _sr = backend.synthesize_to_wav(text, voice_short, output_path)
+            logger.info(
+                "Chatterbox synth: voice=%s text=%d chars audio=%.2fs gen=%.2fs",
+                voice_id, len(text), duration, time.monotonic() - t0,
+            )
+            shutil.copy2(output_path, cached_audio)
+            from .whisper_align import align_audio
+            raw_words = align_audio(output_path, text, language="en") or []
+            if not raw_words:
+                logger.warning(
+                    "Whisper alignment returned no words for Chatterbox audio; "
+                    "falling back to proportional spread"
+                )
+                raw_words = self._proportional_spread(text.split(), 0.0, duration)
+            raw_words = self._coerce_words(raw_words)
+            cached_meta.write_text(json.dumps(
+                {"duration": round(duration, 3), "raw_words": raw_words,
+                 "voice": voice_id, "engine": "chatterbox"},
+                ensure_ascii=False, indent=2,
+            ))
+
+        corrected_words, timing_correction, raw_stats, corrected_stats = (
+            self._postprocess_word_timestamps(words=raw_words, duration=duration)
+        )
+        self._log_timing_stats(cache_key, corrected_stats, cache_hit=cached_audio.exists())
+        if timing_correction.get("changed_word_count"):
+            self._log_timing_correction(cache_key, timing_correction, cache_hit=False)
+
+        return {
+            "audio_path": str(output_path),
+            "duration": round(duration, 3),
+            "raw_words": raw_words,
+            "corrected_words": corrected_words,
+            "words": corrected_words,
+            "voice": voice_id,
+            "rate": "+0%",
+            "pitch": "+0Hz",
+            "volume": "+0%",
+            "timing_stats_raw": raw_stats,
+            "timing_stats_corrected": corrected_stats,
+            "timing_stats": corrected_stats,
+            "timing_correction": timing_correction,
+            "alignment_mode_requested": "forced",
+            "alignment_mode_effective": "forced",
+            "alignment_mode_fallback_reason": None,
+            "engine": "chatterbox",
         }
 
     def _normalize_percent(self, value: Optional[str], default: str, label: str) -> str:
@@ -542,6 +706,22 @@ class TTSEngine:
             logger.debug("TTS sanitized text: '%s...' → '%s...'", original_text[:60], text[:60])
 
         voice_id = self._resolve_voice(voice)
+
+        # --- Dispatch: Chatterbox voices (cb:*) -----------------------------
+        # Voice-cloned narration. No native word boundaries → forced alignment.
+        if _is_chatterbox_voice(voice_id):
+            try:
+                return self._synthesize_chatterbox(
+                    text=text,
+                    output_path=output_path,
+                    voice_id=voice_id,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Chatterbox synthesis failed (%s); falling back to Edge-TTS en-US-GuyNeural",
+                    exc,
+                )
+                voice_id = "en-US-GuyNeural"
 
         # --- Dispatch: Kokoro voices route to local backend ---------------
         # Kokoro returns no native word boundaries → forced alignment is

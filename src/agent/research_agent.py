@@ -190,11 +190,19 @@ def _phase_search(
     language: str,
     emit: Optional[Callable],
 ) -> tuple[list[dict], list[dict]]:
-    """Run multiple DDG queries, collect snippets + URLs.
+    """Run multiple search queries, collect snippets + URLs.
 
+    Uses SearXNG (self-hosted) when available, falls back to DuckDuckGo.
     Returns (all_search_results, snippet_chunks).
     """
     from ..content_sources.duckduckgo_source import search_duckduckgo
+    from ..content_sources.searxng_source import search_searxng, is_available as _searxng_available
+
+    _use_searxng = _searxng_available()
+    if _use_searxng:
+        logger.info("SearXNG available — using as primary search backend")
+    else:
+        logger.info("SearXNG unavailable — falling back to DuckDuckGo")
 
     cfg = research_settings()
     max_ddg = cfg["max_ddg_per_query"]
@@ -231,7 +239,10 @@ def _phase_search(
             if query and all(ord(c) < 128 for c in query.replace(" ", "").replace("-", "").replace("'", "")):
                 search_lang = "en-US"
 
-            results = search_duckduckgo(query, language=search_lang, max_results=max_ddg)
+            if _use_searxng:
+                results = search_searxng(query, language=search_lang, max_results=max_ddg)
+            else:
+                results = search_duckduckgo(query, language=search_lang, max_results=max_ddg)
             for r in results:
                 url = r.get("href", r.get("url", ""))
                 snippet = r.get("body", r.get("snippet", ""))

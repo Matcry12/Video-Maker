@@ -43,7 +43,7 @@ OUTPUT: strict JSON only, no markdown, no preamble, no prose after the JSON.
   "bgm_mood": "",
   "search_queries": ["angle-specific query 1", "angle-specific query 2", "..."],
   "domain_preferences": ["optional preferred domain hints"],
-  "skill_id": "lore_deep_dive" | "comparison" | "dark_secrets" | "explained" | "theory" | "did_you_know" | "easter_eggs" | "story_time" | "timeline" | "top_list" | "brainrot" | "comedy" | "debunked" | "what_happened_to" | ""
+  "skill_id": "fact_dump" | ""
 }
 
 RULES:

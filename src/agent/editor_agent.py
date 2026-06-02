@@ -94,14 +94,19 @@ def run_editor_lab(
     from ..agent_config import load_agent_settings
     from ..editor import (
         _lab_apply_xfade,
-        _lab_build_dual_panel_slide,
+        _lab_build_card_only,
+        _lab_build_single_center_card_only,
+        _lab_build_single_center_slide,
         _lab_build_karaoke_ass,
         _lab_mix_bgm,
+        _lab_pick_bg_video,
         _lab_pick_bgm,
         _lab_render_clip_video_only,
+        _lab_render_with_continuous_bg,
         _lab_split_into_blocks,
         _lab_build_portrait_slide,
     )
+    from ..tts import resolve_bg_video_category, resolve_bgm_folder
 
     settings = load_agent_settings()
     lab_cfg  = settings.get("lab_editor", {}) or {}
@@ -109,6 +114,16 @@ def run_editor_lab(
     xfade_dur = float(lab_cfg.get("xfade_duration", 0.20))
     directions = list(lab_cfg.get("transition_directions", ["left", "up", "right", "down"]))
     bgm_volume = float(lab_cfg.get("bgm_volume", 0.15))
+
+    skill_id = str(script.get("skill_id") or "")
+    mood = str(script.get("mood") or "")
+    bg_category  = resolve_bg_video_category(skill_id)
+    bgm_category = resolve_bgm_folder(skill_id, mood, PROJECT_ROOT / "assets" / "audio" / "bgm")
+    bg_video = _lab_pick_bg_video(bg_category)
+    logger.info(
+        "Lab: skill_id=%r  mood=%r  bg_category=%r  bg_video=%s  bgm_category=%r",
+        skill_id, mood, bg_category, bg_video.name if bg_video else "none", bgm_category,
+    )
 
     blocks_in = script.get("blocks") or []
     if not blocks_in:
@@ -126,8 +141,16 @@ def run_editor_lab(
         pp = Path(p)
         if not pp.is_absolute():
             pp = PROJECT_ROOT / pp
-        if pp.exists():
+        if not pp.exists():
+            continue
+        try:
+            from PIL import Image as _TestPIL
+            with _TestPIL.open(pp) as _im:
+                _ = _im.size  # read header; fails on corrupt/wrong-format files
+                _ = _im.mode
             img_paths.append(pp)
+        except Exception:
+            logger.warning("Skipping unreadable image: %s", pp)
     if not img_paths:
         raise ValueError("run_editor_lab: no valid images in first block")
 
@@ -206,46 +229,89 @@ def run_editor_lab(
     except Exception as exc:
         raise RuntimeError(f"run_editor_lab: PIL required: {exc}")
 
-    slide_paths: list[Path] = []
-    bias_cycle = [0.3, 0.5, 0.7, 0.4, 0.6, 0.3, 0.7, 0.5]
-    for i, _block in enumerate(blocks):
-        img_path = img_paths[i % len(img_paths)]
+    import random as _random
+
+    _TARGET_LANDSCAPE = 16 / 9  # ~1.778
+    _TARGET_PORTRAIT  =  9 / 16  # ~0.5625
+
+    # Pre-classify by orientation, keeping each image's measured ratio.
+    portrait_imgs: list[tuple[float, Path]] = []   # (closeness, path)
+    landscape_imgs: list[tuple[float, Path]] = []
+    for p in img_paths:
         try:
-            with _PILImage.open(img_path) as im:
-                w, h = im.size
-            ratio = (w / h) if h else 1.0
+            with _PILImage.open(p) as im:
+                _iw, _ih = im.size
+            _ratio = (_iw / _ih) if _ih else 1.0
         except Exception:
-            ratio = 1.0
-
-        if ratio < 0.9:
-            slide = _lab_build_portrait_slide(img_path, bias_x=bias_cycle[i % len(bias_cycle)])
+            _ratio = 1.0
+        if _ratio < 0.9:
+            portrait_imgs.append((abs(_ratio - _TARGET_PORTRAIT), p))
+        elif _ratio > 1.2:
+            landscape_imgs.append((abs(_ratio - _TARGET_LANDSCAPE), p))
         else:
-            top_path = img_paths[i % len(img_paths)]
-            bot_path = img_paths[(i + 1) % len(img_paths)]
-            slide = _lab_build_dual_panel_slide(top_path, bot_path, bias_top=0.35, bias_bottom=0.65)
+            # Square-ish (0.9–1.2): treat as portrait single card
+            portrait_imgs.append((abs(_ratio - _TARGET_PORTRAIT), p))
 
-        slide_path = tmp_dir / f"slide_{i}.png"
-        slide.save(slide_path, quality=95)
-        slide_paths.append(slide_path)
+    # Sort each pool: images closest to the target ratio come first.
+    portrait_imgs.sort(key=lambda t: t[0])
+    landscape_imgs.sort(key=lambda t: t[0])
+    portrait_paths = [p for _, p in portrait_imgs]
+    landscape_paths = [p for _, p in landscape_imgs]
+
+    # Random start so first image varies each render.
+    p_idx = _random.randint(0, max(0, len(portrait_paths) - 1)) if portrait_paths else 0
+    l_idx = _random.randint(0, max(0, len(landscape_paths) - 1)) if landscape_paths else 0
+
+    # Rebind to plain lists for the loop below.
+    portrait_imgs = portrait_paths   # type: ignore[assignment]
+    landscape_imgs = landscape_paths  # type: ignore[assignment]
+
+    bias_cycle = [0.3, 0.5, 0.7, 0.4, 0.6, 0.3, 0.7, 0.5]
+    fg_paths: list[Path] = []
+    slide_paths: list[Path] = []
+    for i, _block in enumerate(blocks):
+        # Block 0: full-frame portrait hook card (character face).
+        # Subsequent blocks: ONE image in the upper-middle band, text below it.
+        force_portrait = (i == 0)
+
+        if force_portrait:
+            pool = portrait_imgs or landscape_imgs or img_paths
+            img_path = pool[0]
+            single_center = False
+        else:
+            # One image per block — prefer landscape, then portrait, then any.
+            pool = landscape_imgs or portrait_imgs or img_paths
+            img_path = pool[l_idx % len(pool)]
+            l_idx += 1
+            single_center = True
+
+        bias = bias_cycle[i % len(bias_cycle)]
+        if bg_video is not None:
+            if single_center:
+                fg = _lab_build_single_center_card_only(img_path, bias_x=bias)
+            else:
+                fg = _lab_build_card_only(img_path, bias_x=bias)
+            fp = tmp_dir / f"fg_{i}.png"
+            fg.save(fp)
+            fg_paths.append(fp)
+        else:
+            if single_center:
+                slide = _lab_build_single_center_slide(img_path, bias_x=bias)
+            else:
+                slide = _lab_build_portrait_slide(img_path, bias_x=bias)
+            slide_path = tmp_dir / f"slide_{i}.png"
+            slide.save(slide_path, quality=95)
+            slide_paths.append(slide_path)
 
     # --- Timings ---
     block_starts = [float(b[0]["start"]) for b in blocks]
     block_ends   = [float(b[-1]["end"])  for b in blocks]
-    # Include inter-block gaps so each clip covers silence between blocks.
-    # Also pad the last clip by (n-1)*xfade_dur to compensate for time lost
-    # to xfade overlaps — without this, -shortest cuts the audio early.
+    # Include inter-block gaps; pad last block by (n-1)*xfade_dur to compensate
+    # for time lost to xfade overlaps so -shortest doesn't truncate audio early.
     n_blocks = len(blocks)
     block_durs = [block_starts[i + 1] - block_starts[i] for i in range(n_blocks - 1)]
     block_durs.append(block_ends[-1] - block_starts[-1] + 0.4 + (n_blocks - 1) * xfade_dur)
     audio_start = block_starts[0]
-
-    # --- Render video-only clips ---
-    _emit("editor", f"Lab: rendering {len(blocks)} clips...", stage="lab_render")
-    clip_paths: list[Path] = []
-    for i in range(len(blocks)):
-        clip_path = tmp_dir / f"clip_{i}.mp4"
-        _lab_render_clip_video_only(slide_paths[i], block_durs[i], clip_path)
-        clip_paths.append(clip_path)
 
     # --- Global ASS ---
     all_words_global: list[dict] = []
@@ -256,19 +322,40 @@ def run_editor_lab(
     global_ass = tmp_dir / "global.ass"
     global_ass.write_text(ass_str, encoding="utf-8")
 
-    # --- Apply xfade + ASS + audio ---
-    _emit("editor", "Lab: applying transitions...", stage="lab_xfade")
+    # --- Render: bg-video single-pass OR legacy per-clip + xfade ---
     xfade_out = tmp_dir / "xfade.mp4"
-    _lab_apply_xfade(
-        clip_paths=clip_paths,
-        block_durs=block_durs,
-        directions=directions,
-        xfade_dur=xfade_dur,
-        ass_path=global_ass,
-        audio_path=audio_path,
-        audio_start=audio_start,
-        out=xfade_out,
-    )
+    if bg_video is not None:
+        _emit("editor", "Lab: rendering with continuous bg + fg xfade...", stage="lab_render_bg")
+        _lab_render_with_continuous_bg(
+            bg_video=bg_video,
+            fg_pngs=fg_paths,
+            block_durs=block_durs,
+            directions=directions,
+            xfade_dur=xfade_dur,
+            ass_path=global_ass,
+            audio_path=audio_path,
+            audio_start=audio_start,
+            out=xfade_out,
+        )
+    else:
+        _emit("editor", f"Lab: rendering {len(blocks)} clips...", stage="lab_render")
+        clip_paths: list[Path] = []
+        for i in range(n_blocks):
+            clip_path = tmp_dir / f"clip_{i}.mp4"
+            _lab_render_clip_video_only(slide_paths[i], block_durs[i], clip_path)
+            clip_paths.append(clip_path)
+
+        _emit("editor", "Lab: applying transitions...", stage="lab_xfade")
+        _lab_apply_xfade(
+            clip_paths=clip_paths,
+            block_durs=block_durs,
+            directions=directions,
+            xfade_dur=xfade_dur,
+            ass_path=global_ass,
+            audio_path=audio_path,
+            audio_start=audio_start,
+            out=xfade_out,
+        )
 
     # --- BGM mix ---
     output_dir = PROJECT_ROOT / "output"
@@ -276,7 +363,20 @@ def run_editor_lab(
     output_path = output_dir / f"{output_name}.mp4"
 
     bgm_dir = PROJECT_ROOT / "assets" / "audio" / "bgm"
-    bgm = _lab_pick_bgm(bgm_dir)
+    # Optional exact-track pin: script.json "bgm_file" overrides mood selection.
+    bgm = None
+    bgm_file_override = str(script.get("bgm_file") or "").strip()
+    if bgm_file_override:
+        cand = Path(bgm_file_override)
+        if not cand.is_absolute():
+            cand = bgm_dir / bgm_file_override
+        if cand.exists():
+            bgm = cand
+            logger.info("Lab: using pinned bgm_file=%s", cand.name)
+        else:
+            logger.warning("Lab: bgm_file override not found (%s); falling back to mood", cand)
+    if bgm is None:
+        bgm = _lab_pick_bgm(bgm_dir, category=bgm_category)
     if bgm is not None:
         _emit("editor", f"Lab: mixing BGM ({bgm.name})...", stage="lab_bgm")
         _lab_mix_bgm(xfade_out, bgm, output_path, bgm_vol=bgm_volume)

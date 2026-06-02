@@ -1,0 +1,102 @@
+{
+  "style_id": "hype",
+  "name": "Hype",
+  "description": "Default fandom-shorts voice. Sincere hyped fan tone. Mixed sentence lengths, natural connectors, no academic vocab.",
+  "tone_paragraph": "A hyped fan explaining their favorite character to another fan. Sincere, not ironic. They genuinely think this is the coolest thing ever and want you to feel it. Mix sentence lengths naturally — some short punches, some longer build-ups. No essay vocab, no academic framing. The voice is excited but coherent — the viewer should feel they're getting a real recommendation from someone who knows the lore.",
+  "sentence_rules": {
+    "max_words": 25,
+    "soft_cap_words": 15,
+    "avg_target_words": 12,
+    "max_clauses_per_sentence": 2,
+    "punctuation_banned": [";", "—"],
+    "punctuation_preferred": [".", ","]
+  },
+  "vocabulary": {
+    "connectives_allowed": [
+      "and",
+      "but",
+      "so",
+      "meanwhile",
+      "now here's the part",
+      "here's the thing",
+      "and that's when",
+      "the wildest part is"
+    ],
+    "banned_essay_vocab": [
+      "Furthermore",
+      "However",
+      "Therefore",
+      "In conclusion",
+      "Moreover",
+      "causality",
+      "acausality",
+      "paradigm",
+      "nullify",
+      "It said",
+      "There is",
+      "There are"
+    ],
+    "encouraged_modifiers": [
+      "literally",
+      "absolutely",
+      "the craziest thing is",
+      "the wildest part",
+      "and that's not even",
+      "no joke"
+    ],
+    "punches_allowed": "0-1 single-word punches max. More than that drifts into brainrot territory."
+  },
+  "structural_rules": {
+    "min_hype_modifiers": 2,
+    "min_quoted_iconic_line": 1,
+    "direct_address_min": 2,
+    "vary_sentence_length": "Required — no 5 short sentences in a row, no 3 long sentences in a row. Rhythm carries the energy.",
+    "punch_contrast_rule": "The 0-1 single-word punch you're allowed only lands because the surrounding sentences flow. Don't chop a flowing thought into fragments hoping each fragment becomes a punch — that just kills the cadence and nothing hits. The pattern is: 1-2 flowing 12-20 word sentences building energy, then a single sharp punch that breaks the rhythm.",
+    "read_aloud_test": "Read the script out loud as if you're a hyped fan telling another fan about your favorite character. If it sounds like a wiki summary read by a robot, the sentences are too uniform or too short. If it sounds like real excited speech with breath and emphasis, ship it.",
+    "writer_posture": "TRUST THE FACT. The hyped fan voice is sincere, but the FACT still carries the actual weight — modifiers are seasoning, not the meal. Four principles:\n1. ONE MOVE PER SENTENCE. Don't stuff a fact + reaction + callback into one sentence. State the fact, then react in the next sentence if needed.\n2. REACT AFTER, NOT DURING. Don't insert 'shockingly' or 'unbelievably' inside a fact sentence. Hype modifiers ('literally', 'no joke', 'the wildest part') belong as STANDALONE reaction beats AFTER the fact, not glued inside it.\n3. TRUST THE VERB. Specific verbs do most of the emotional work. 'Furina spent 500 years scamming the heavens' — 'scamming' is the punch. You don't need 'absolutely brutally scamming'. Save modifiers for the 2-3 most shocking beats.\n4. RESTRAINT MAKES HYPE LAND. If every sentence is hyped, hype loses meaning. Mix calm recounting beats with the peak hype moments — the contrast is what makes the peaks register. A 100%-peak script reads as flat noise."
+  },
+  "voice_traits": {
+    "ironic_distance": false,
+    "sincere_hype": true,
+    "semantic_drift_allowed": false,
+    "academic_tone": false,
+    "explanation_allowed": true
+  },
+  "word_count_target": "130-160",
+  "tts_seconds_estimate": "55-70",
+  "prompt_injection": "HYPE DELIVERY STYLE — applies to whichever content skill is active.\n\nWRITER'S POSTURE (read first):\n- TRUST THE FACT. The hyped fan voice is sincere, but the FACT carries the actual weight — modifiers are seasoning, not the meal.\n- ONE MOVE PER SENTENCE. State the fact, end the sentence. Reactions come AFTER as their own beat, never glued inside a fact sentence.\n- REACT AFTER, NOT DURING. Don't insert 'shockingly' or 'unbelievably' inside a fact sentence. Hype modifiers ('literally', 'no joke', 'the wildest part') belong as STANDALONE reaction beats AFTER the fact.\n- TRUST THE VERB. Specific verbs do most of the emotional work. 'Furina spent 500 years scamming the heavens' — 'scamming' is the punch. You don't need 'absolutely brutally scamming'.\n- RESTRAINT MAKES HYPE LAND. If every sentence is hyped, hype loses meaning. Mix calm recounting beats with the peak hype moments — the contrast is what makes the peaks register.\n\nVOICE — sincere fan, not ironic:\n- A hyped fan explaining their favorite character to another fan. Sincere, not deadpan. They genuinely think this is the coolest thing ever and want you to feel it.\n- Tone is excited but coherent — the viewer should feel they're getting a real recommendation from someone who knows the lore.\n- Allowed connectives: 'and', 'but', 'so', 'meanwhile', 'now here's the part', 'here's the thing', 'and that's when', 'the wildest part is'.\n- Banned essay vocab: 'Furthermore', 'However', 'Therefore', 'In conclusion', 'Moreover', 'causality', 'paradigm', 'nullify'.\n- Encouraged modifiers (max 2-3 per script, on peak beats only): 'literally', 'absolutely', 'the craziest thing is', 'the wildest part', 'no joke'.\n\nCADENCE:\n- Mix sentence lengths naturally. Hard cap 25 words, soft cap 15, average target ~12.\n- Vary rhythm: never 5 short sentences in a row, never 3 long sentences in a row. Rhythm carries the energy.\n- Maximum 1 single-word punch in the entire script. Hype is sincere — it doesn't lean on punches the way brainrot does.\n- Include at least one quoted iconic line, delivered dramatically.\n\nLENGTH:\n- Target 130-160 words. Not shorter, not longer.\n\nOPENER:\n- Hook max 12 words. Banned openers: 'In the world of', 'Today we're', 'Have you ever', 'Picture this', 'Imagine if', 'Hey guys', 'Welcome back', 'Let me tell you about'.\n\nCLOSER:\n- Last 2 sentences = Gen Z closer + subscribe CTA, each <=8 words. Vary across runs.",
+  "opener_rules": {
+    "hook_max_words": 12,
+    "banned_openers": [
+      "In the world of",
+      "Today we're",
+      "Have you ever",
+      "Picture this",
+      "Imagine if",
+      "Hey guys",
+      "Welcome back",
+      "Let me tell you about"
+    ],
+    "did_you_know_rule": "Allowed only if the next clause is concretely absurd. 'Did you know Furina spent 500 years scamming the heavens?' passes. 'Did you know this character is interesting?' fails."
+  },
+  "closer_rules": {
+    "structure": "Last 2 sentences = Gen Z closer + subscribe CTA. Each <=8 words. Counts toward word budget. Vary across runs.",
+    "closer_examples": [
+      "And that's the lore, bestie.",
+      "That's it. That's the post.",
+      "Yeah. He's him.",
+      "No cap. That actually happened.",
+      "Cooked. Absolutely cooked.",
+      "And that's on period.",
+      "Bro. BRO."
+    ],
+    "cta_examples": [
+      "Sub for more brainrot.",
+      "Hit subscribe or you're cooked.",
+      "Follow for daily anime lore.",
+      "Subscribe. It's free real estate.",
+      "Like and sub, no cap."
+    ]
+  },
+  "reference_example": "Did you know Furina has a higher daily stress level than a player losing their fifty-fifty at ninety pity? Let's look at the facts. Fact one: She spent five hundred years acting like a god just to scam the heavens. Meanwhile, you can't even pretend to like your teammates for five minutes in co-op. Fact two: Her ultimate ability literally drains her own team's life force to boost damage. She is the physical embodiment of the phrase, \"some of you may die, but that is a sacrifice I am willing to make.\" Now for a quick comparison: Furina versus Neuvillette. When Neuvillette gets sad, the weather violently shifts and it rains across the entire nation. When Furina gets sad, she just sits alone in the dark eating plain macaroni. Drop a like if your Furina is still using a copium three-star weapon, and subscribe for more!"
+}

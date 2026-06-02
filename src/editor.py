@@ -1524,6 +1524,17 @@ _LAB_PANEL_H    = int(_LAB_PANEL_W * 9 / 16)            # 513
 _LAB_PANEL_TOP_Y    = 80
 _LAB_PANEL_BOTTOM_Y = _LAB_VIDEO_H - _LAB_PANEL_TOP_Y - _LAB_PANEL_H  # 1327
 
+# bg-video pipeline: card centered both axes on a 1080x1920 canvas. Smaller
+# than the legacy blurred-bg card so gameplay video reads above + below.
+_LAB_BG_CARD_W = 820
+_LAB_BG_CARD_H = 1458   # ~9:16 aspect
+
+# single-center layout (one image per block): image sits in the upper-middle
+# band, leaving the lower third free for the karaoke text directly beneath it.
+_LAB_SINGLE_W     = 912
+_LAB_SINGLE_H     = 684          # 4:3 box; contain-fit holds any aspect
+_LAB_SINGLE_TOP_Y = 400          # image spans y 400..1084; text lives below
+
 _LAB_ASS_HEADER = """\
 [Script Info]
 ScriptType: v4.00+
@@ -1533,8 +1544,8 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Changa One,88,&H00FFFFFF,&H0054D8FF,&H000A0A0A,&H00000000,1,0,0,0,100,100,0.0,0,1,6.0,1.0,5,80,80,0,1
-Style: Highlight,Changa One,88,&H0000F6FF,&H0000F6FF,&H00101010,&H00000000,1,0,0,0,100,100,0.0,0,1,7.0,1.0,5,80,80,0,1
+Style: Default,Changa One,88,&H00FFFFFF,&H0054D8FF,&H000A0A0A,&H00000000,1,0,0,0,100,100,0.0,0,1,6.0,1.0,2,80,80,430,1
+Style: Highlight,Changa One,88,&H0000F6FF,&H0000F6FF,&H00101010,&H00000000,1,0,0,0,100,100,0.0,0,1,7.0,1.0,2,80,80,430,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"""
@@ -1568,6 +1579,30 @@ def _lab_cover_resize(img, w: int, h: int, bias_x: float = 0.5):
     return resized.crop((left, top, left + w, top + h))
 
 
+def _lab_contain_resize(img, w: int, h: int):
+    """Scale image to fit entirely within w×h — full image always visible.
+
+    Background is a blurred cover fill of the same image.
+    """
+    src_w, src_h = img.size
+    scale = min(w / src_w, h / src_h)
+    fit_w = max(1, int(src_w * scale))
+    fit_h = max(1, int(src_h * scale))
+    # Blurred cover fill for the background
+    bg_scale = max(w / src_w, h / src_h)
+    bg_img = img.resize((max(1, int(src_w * bg_scale)), max(1, int(src_h * bg_scale))), _LabImage.LANCZOS)
+    bg_left = max((bg_img.width - w) // 2, 0)
+    bg_top  = max((bg_img.height - h) // 2, 0)
+    bg = bg_img.crop((bg_left, bg_top, bg_left + w, bg_top + h)).filter(_LabImageFilter.GaussianBlur(20))
+    # Paste contain-fitted image centered
+    resized = img.resize((fit_w, fit_h), _LabImage.LANCZOS)
+    x = (w - fit_w) // 2
+    y = (h - fit_h) // 2
+    result = bg.copy()
+    result.paste(resized, (x, y))
+    return result
+
+
 def _lab_paste_panel(overlay, card, x: int, y: int) -> None:
     sw, sh = card.width + 40, card.height + 40
     shadow = _LabImage.new("RGBA", (sw, sh), (0, 0, 0, 0))
@@ -1585,7 +1620,7 @@ def _lab_build_portrait_slide(img_path: Path, bias_x: float = 0.5):
     """Portrait-style card on a blurred background. Returns a PIL RGB Image."""
     with _LabImage.open(img_path).convert("RGB") as src:
         bg   = _lab_cover_resize(src, _LAB_VIDEO_W, _LAB_VIDEO_H, bias_x=0.5).filter(_LabImageFilter.GaussianBlur(26))
-        card = _lab_cover_resize(src, _LAB_CARD_W, _LAB_CARD_H, bias_x=bias_x)
+        card = _lab_contain_resize(src, _LAB_CARD_W, _LAB_CARD_H)
         base    = bg.convert("RGBA")
         overlay = _LabImage.new("RGBA", (_LAB_VIDEO_W, _LAB_VIDEO_H), (0, 0, 0, 0))
         _lab_paste_panel(overlay, card, _LAB_SIDE_MARGIN, _LAB_VERT_MARGIN)
@@ -1593,19 +1628,77 @@ def _lab_build_portrait_slide(img_path: Path, bias_x: float = 0.5):
     return static
 
 
+def _lab_build_card_only(img_path: Path, bias_x: float = 0.5):
+    """Foreground card on a transparent 1080x1920 RGBA canvas.
+
+    Used by the bg-video pipeline — replaces the blurred-bg slide with a
+    smaller centered card so gameplay video reads above and below.
+    """
+    with _LabImage.open(img_path).convert("RGB") as src:
+        card = _lab_contain_resize(src, _LAB_BG_CARD_W, _LAB_BG_CARD_H)
+    canvas = _LabImage.new("RGBA", (_LAB_VIDEO_W, _LAB_VIDEO_H), (0, 0, 0, 0))
+    side_margin = (_LAB_VIDEO_W - _LAB_BG_CARD_W) // 2
+    top_margin  = (_LAB_VIDEO_H - _LAB_BG_CARD_H) // 2
+    _lab_paste_panel(canvas, card, side_margin, top_margin)
+    return canvas
+
+
+def _lab_build_dual_panel_card_only(img_top_path: Path, img_bottom_path: Path, bias_top: float = 0.35, bias_bottom: float = 0.65):
+    """Two stacked 16:9 panels on a transparent 1080x1920 RGBA canvas.
+
+    bg-video twin of _lab_build_dual_panel_slide — same panel placement,
+    no blurred backdrop so gameplay video reads through the gaps.
+    """
+    with _LabImage.open(img_top_path).convert("RGB") as src_top:
+        panel_top = _lab_contain_resize(src_top, _LAB_PANEL_W, _LAB_PANEL_H)
+    with _LabImage.open(img_bottom_path).convert("RGB") as src_bot:
+        panel_bot = _lab_contain_resize(src_bot, _LAB_PANEL_W, _LAB_PANEL_H)
+    canvas = _LabImage.new("RGBA", (_LAB_VIDEO_W, _LAB_VIDEO_H), (0, 0, 0, 0))
+    _lab_paste_panel(canvas, panel_top, _LAB_PANEL_MARGIN, _LAB_PANEL_TOP_Y)
+    _lab_paste_panel(canvas, panel_bot, _LAB_PANEL_MARGIN, _LAB_PANEL_BOTTOM_Y)
+    return canvas
+
+
 def _lab_build_dual_panel_slide(img_top_path: Path, img_bottom_path: Path, bias_top: float = 0.35, bias_bottom: float = 0.65):
     """Two landscape panels (top/bottom) with blurred background. Returns a PIL RGB Image."""
     with _LabImage.open(img_top_path).convert("RGB") as src_top:
         bg = _lab_cover_resize(src_top, _LAB_VIDEO_W, _LAB_VIDEO_H, bias_x=0.5).filter(_LabImageFilter.GaussianBlur(26))
-        panel_top = _lab_cover_resize(src_top, _LAB_PANEL_W, _LAB_PANEL_H, bias_x=bias_top)
+        panel_top = _lab_contain_resize(src_top, _LAB_PANEL_W, _LAB_PANEL_H)
     with _LabImage.open(img_bottom_path).convert("RGB") as src_bot:
-        panel_bot = _lab_cover_resize(src_bot, _LAB_PANEL_W, _LAB_PANEL_H, bias_x=bias_bottom)
+        panel_bot = _lab_contain_resize(src_bot, _LAB_PANEL_W, _LAB_PANEL_H)
 
     base    = bg.convert("RGBA")
     overlay = _LabImage.new("RGBA", (_LAB_VIDEO_W, _LAB_VIDEO_H), (0, 0, 0, 0))
     _lab_paste_panel(overlay, panel_top, _LAB_PANEL_MARGIN, _LAB_PANEL_TOP_Y)
     _lab_paste_panel(overlay, panel_bot, _LAB_PANEL_MARGIN, _LAB_PANEL_BOTTOM_Y)
     return _LabImage.alpha_composite(base, overlay).convert("RGB")
+
+
+def _lab_build_single_center_slide(img_path: Path, bias_x: float = 0.5):
+    """One contain-fit image in the upper-middle band over a blurred background.
+
+    Leaves the lower third clear so the karaoke text reads directly beneath the
+    image. Returns a PIL RGB Image.
+    """
+    with _LabImage.open(img_path).convert("RGB") as src:
+        bg   = _lab_cover_resize(src, _LAB_VIDEO_W, _LAB_VIDEO_H, bias_x=0.5).filter(_LabImageFilter.GaussianBlur(26))
+        card = _lab_contain_resize(src, _LAB_SINGLE_W, _LAB_SINGLE_H)
+    base    = bg.convert("RGBA")
+    overlay = _LabImage.new("RGBA", (_LAB_VIDEO_W, _LAB_VIDEO_H), (0, 0, 0, 0))
+    x = (_LAB_VIDEO_W - _LAB_SINGLE_W) // 2
+    _lab_paste_panel(overlay, card, x, _LAB_SINGLE_TOP_Y)
+    return _LabImage.alpha_composite(base, overlay).convert("RGB")
+
+
+def _lab_build_single_center_card_only(img_path: Path, bias_x: float = 0.5):
+    """bg-video twin of _lab_build_single_center_slide — one image upper-middle
+    on a transparent canvas so gameplay video reads through."""
+    with _LabImage.open(img_path).convert("RGB") as src:
+        card = _lab_contain_resize(src, _LAB_SINGLE_W, _LAB_SINGLE_H)
+    canvas = _LabImage.new("RGBA", (_LAB_VIDEO_W, _LAB_VIDEO_H), (0, 0, 0, 0))
+    x = (_LAB_VIDEO_W - _LAB_SINGLE_W) // 2
+    _lab_paste_panel(canvas, card, x, _LAB_SINGLE_TOP_Y)
+    return canvas
 
 
 def _lab_merge_punctuation(words: list[dict]) -> list[dict]:
@@ -1788,6 +1881,84 @@ def _lab_render_clip_video_only(slide: Path, duration: float, out: Path) -> None
     )
 
 
+def _lab_render_clip_with_bg_video(
+    bg_video: Path,
+    fg_png: Path,
+    bg_offset: float,
+    duration: float,
+    out: Path,
+) -> None:
+    """Render one block: bg.mp4 (looped, seeked to bg_offset) under fg PNG.
+
+    Source audio is muted (-an); TTS + BGM are muxed downstream by
+    _lab_apply_xfade / _lab_mix_bgm.
+    """
+    filter_complex = (
+        f"[0:v]scale={_LAB_VIDEO_W}:{_LAB_VIDEO_H}:force_original_aspect_ratio=increase,"
+        f"crop={_LAB_VIDEO_W}:{_LAB_VIDEO_H},fps=30,setsar=1[bg];"
+        f"[1:v]format=yuva420p[fg];"
+        f"[bg][fg]overlay=0:0:format=auto:shortest=0[vout]"
+    )
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-stream_loop", "-1", "-ss", f"{bg_offset:.3f}", "-i", str(bg_video),
+            "-loop", "1", "-i", str(fg_png),
+            "-filter_complex", filter_complex,
+            "-map", "[vout]",
+            "-t", f"{duration:.3f}",
+            "-an",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
+            str(out),
+        ],
+        check=True, capture_output=True,
+    )
+
+
+def _lab_video_aspect(path: Path) -> Optional[str]:
+    """Probe a clip's aspect: 'portrait', 'landscape', 'square'. None on failure."""
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=width,height", "-of", "csv=p=0", str(path)],
+            capture_output=True, text=True, check=True, timeout=10,
+        ).stdout.strip()
+        w_s, h_s = out.split(",")[:2]
+        w, h = int(w_s), int(h_s)
+        if h == 0:
+            return None
+        ratio = w / h
+        if ratio < 0.95:
+            return "portrait"
+        if ratio > 1.05:
+            return "landscape"
+        return "square"
+    except Exception:
+        return None
+
+
+def _lab_pick_bg_video(category: str, target_aspect: str = "portrait") -> Optional[Path]:
+    """Random clip from assets/videos/backgrounds/<category>/.
+
+    Prefers clips matching `target_aspect` ('portrait' for 9:16, 'landscape' for 16:9).
+    Falls back to any clip when no aspect-matched candidate exists, so the renderer
+    still has something to overlay (will be center-cropped to fit). None if folder
+    missing or empty.
+    """
+    if not category:
+        return None
+    base = Path(__file__).parent.parent / "assets" / "videos" / "backgrounds" / category
+    if not base.exists():
+        return None
+    candidates = [p for p in base.iterdir() if p.suffix.lower() in (".mp4", ".mov", ".webm")]
+    if not candidates:
+        return None
+    matched = [p for p in candidates if _lab_video_aspect(p) == target_aspect]
+    if matched:
+        return _lab_random.choice(matched)
+    return _lab_random.choice(candidates)
+
+
 def _lab_escape_path(path: Path) -> str:
     return str(path).replace("\\", "/").replace(":", "\\:")
 
@@ -1870,11 +2041,94 @@ def _lab_apply_xfade(
     subprocess.run(cmd, check=True)
 
 
-def _lab_pick_bgm(bgm_dir: Path) -> Optional[Path]:
-    """Randomly pick a .mp3 or .wav from the folder. Returns None if none found."""
+def _lab_render_with_continuous_bg(
+    bg_video: Path,
+    fg_pngs: list[Path],
+    block_durs: list[float],
+    directions: list[str],
+    xfade_dur: float,
+    ass_path: Path,
+    audio_path: Path,
+    audio_start: float,
+    out: Path,
+) -> None:
+    """Single-pass: continuous bg + xfade-chained fg overlays + ASS + audio.
+
+    Bg plays as one continuous stream (no per-clip seeks). Only the fg
+    layer transitions between blocks via xfade, so the gameplay never
+    glitches at block boundaries.
+
+    Each fg PNG is looped to (block_dur + xfade_dur) so adjacent fgs
+    overlap during the transition window.
+    """
+    n = len(fg_pngs)
+    if n == 0:
+        raise ValueError("_lab_render_with_continuous_bg: no fg pngs")
+    sub  = _lab_escape_path(ass_path)
+    fdir = _lab_escape_path(_LAB_FONT_DIR)
+
+    cmd = ["ffmpeg", "-y", "-stream_loop", "-1", "-i", str(bg_video)]
+    for i, fp in enumerate(fg_pngs):
+        d_i = block_durs[i] + xfade_dur
+        cmd += ["-loop", "1", "-t", f"{d_i:.3f}", "-i", str(fp)]
+    audio_idx = 1 + n
+    cmd += ["-ss", f"{audio_start:.3f}", "-i", str(audio_path)]
+
+    filter_lines: list[str] = [
+        f"[0:v]scale={_LAB_VIDEO_W}:{_LAB_VIDEO_H}:force_original_aspect_ratio=increase,"
+        f"crop={_LAB_VIDEO_W}:{_LAB_VIDEO_H},fps=30,setsar=1[bgv]",
+    ]
+    for i in range(n):
+        filter_lines.append(f"[{i + 1}:v]format=yuva420p,fps=30,setsar=1[f{i}]")
+
+    if n == 1:
+        fgs_label = "[f0]"
+    else:
+        prev_label = "[f0]"
+        cumulative = 0.0
+        for i in range(n - 1):
+            direction = directions[i % len(directions)]
+            xfade_name = _LAB_XFADE.get(direction, "fade")
+            cumulative += block_durs[i]
+            offset = max(cumulative, 0.01)
+            mid_label = f"[xf{i + 1}]"
+            filter_lines.append(
+                f"{prev_label}[f{i + 1}]xfade=transition={xfade_name}"
+                f":duration={xfade_dur:.3f}:offset={offset:.3f}{mid_label}"
+            )
+            prev_label = mid_label
+        fgs_label = prev_label
+
+    filter_lines.append(f"[bgv]{fgs_label}overlay=0:0:format=auto:shortest=0[vmix]")
+    filter_lines.append(
+        f"[vmix]ass='{sub}':fontsdir='{fdir}',fps=30,format=yuv420p[vout]"
+    )
+
+    cmd += [
+        "-filter_complex", ";".join(filter_lines),
+        "-map", "[vout]",
+        "-map", f"{audio_idx}:a",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
+        "-c:a", "aac", "-b:a", "192k",
+        "-shortest",
+        str(out),
+    ]
+    subprocess.run(cmd, check=True)
+
+
+def _lab_pick_bgm(bgm_dir: Path, category: str = "") -> Optional[Path]:
+    """Random .mp3/.wav. With category, prefer bgm_dir/<category>/ then fall
+    back to flat-dir scan. Returns None if neither yields a track."""
+    if category:
+        sub = bgm_dir / category
+        if sub.exists():
+            sub_cands = [p for p in sub.iterdir() if p.suffix.lower() in (".mp3", ".wav")]
+            if sub_cands:
+                return _lab_random.choice(sub_cands)
     if not bgm_dir.exists():
         return None
-    candidates = [p for p in bgm_dir.iterdir() if p.suffix.lower() in (".mp3", ".wav")]
+    candidates = [p for p in bgm_dir.iterdir()
+                  if p.is_file() and p.suffix.lower() in (".mp3", ".wav")]
     if not candidates:
         return None
     return _lab_random.choice(candidates)
