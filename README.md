@@ -10,7 +10,7 @@ Both clips play inline with audio (rendered straight from the pipelines, no edit
 
 | B-roll — Psychology Facts Short | Anime — Lore/Character Short |
 |---|---|
-| <video src="https://github.com/user-attachments/assets/7ae66b29-73d9-4d8c-9e4d-a700f0f796f3" controls width="320"></video> | <video src="https://github.com/user-attachments/assets/1e335e15-fbac-414c-ad3f-5d04244b929a" controls width="320"></video> |
+| <video src="https://github.com/user-attachments/assets/1e335e15-fbac-414c-ad3f-5d04244b929a" controls width="320"></video> | <video src="https://github.com/user-attachments/assets/7ae66b29-73d9-4d8c-9e4d-a700f0f796f3" controls width="320"></video> |
 | _"Why you replay arguments in your head"_ — stock-footage pipeline · ~33s | _"Light Yagami / Death Note"_ — scraped-image pipeline · ~41s |
 
 ---
